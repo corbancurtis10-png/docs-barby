@@ -1,0 +1,65 @@
+---
+title: "Initialize the EZAnimation Service"
+sidebarTitle: "init"
+description: "Bootstrap EZAnimation by providing a named map of animation asset IDs. Returns a configured AnimationService instance ready to drive character rigs."
+---
+
+The `init` function is the entry point for EZAnimation. You call it once — typically inside a Script or ModuleScript during game load — passing a flat table that maps human-readable animation names to their `rbxassetid://` strings. Every subsequent method on the returned `AnimationService` instance references those names, so keeping them short and descriptive pays off across your entire codebase.
+
+<Card title="AnimationService.init()" icon="gear">
+  `init(options) → AnimationService`
+</Card>
+
+## Parameters
+
+<ParamField body="options" type="table" required>
+  A configuration table passed to the constructor.
+
+  <ParamField body="options.List" type="table<string, string>" required>
+    A map of animation name keys to `rbxassetid://` strings. Each key becomes the `id` you pass to `play`, `pause`, `stop`, and other methods. Keys are case-sensitive.
+
+    ```lua
+    {
+      Idle     = "rbxassetid://1234567890",
+      Run      = "rbxassetid://0987654321",
+      Jump     = "rbxassetid://1122334455",
+    }
+    ```
+  </ParamField>
+</ParamField>
+
+## Return Value
+
+<ResponseField name="AnimationService" type="AnimationService">
+  A fully initialised `AnimationService` instance. Store this reference — you will use it to call every other method in the module.
+</ResponseField>
+
+## Example
+
+```lua icon="gear"
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local EZAnimation = require(ReplicatedStorage.EZAnimation)
+
+-- Initialise once with your full animation library
+local AnimService = EZAnimation.init({
+    List = {
+        Idle        = "rbxassetid://1234567890",
+        Walk        = "rbxassetid://1234567891",
+        Run         = "rbxassetid://1234567892",
+        Jump        = "rbxassetid://1234567893",
+        Attack      = "rbxassetid://1234567894",
+        Death       = "rbxassetid://1234567895",
+    },
+})
+
+-- AnimService is now ready — pass it around or store it in a shared module
+return AnimService
+```
+
+<Note>
+  Call `init` only **once** per experience. Calling it multiple times creates separate instances with independent state, which can cause animation conflicts if the same rig is managed by more than one instance.
+</Note>
+
+<Tip>
+  Keep your animation list inside its own `ModuleScript` (e.g. `AnimationList`) and `require` it into `options.List`. This makes it easy to swap asset IDs without touching any logic code.
+</Tip>

@@ -1,47 +1,138 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Quickstart: Play Your First Animation with EZAnimation"
+sidebarTitle: "Quickstart"
+description: "Install EZAnimation into your Roblox game, initialize the service with your animation IDs, and play and stop your first animation in minutes."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
-
-## Prerequisites
-
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+This guide walks you through everything you need to go from a blank project to a working animation in under five minutes. You will place the EZAnimation ModuleScript, require it in a script, initialize the service with your animation IDs, and make your first `play` and `stop` calls.
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
 
-    ```bash
-    npm install your-package
-    ```
-  </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+### Obtain and Place the EZAnimation Module
 
-    ```bash
-    your-cli init
-    ```
-  </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
+Download or copy the **EZAnimation** ModuleScript and place it inside `ReplicatedStorage` in the Roblox Studio Explorer. Keeping it in `ReplicatedStorage` makes it accessible to both server-side `Script` objects and client-side `LocalScript` objects.
 
-    ```bash
-    your-cli start
-    ```
-  </Step>
-</Steps>
+Your Explorer tree should look like this:
+
+```
+ReplicatedStorage
+└── EZAnimation  (ModuleScript)
+```
 
 <Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
-
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
+  You can also place the module in `ServerScriptService` if you only need it on the server, or nest it inside a folder for tidier organization — just update the `require` path accordingly.
 </Tip>
+
+### Require the Module
+
+In a `Script` (server) or `LocalScript` (client), require EZAnimation to get the `AnimationService` table.
+
+```lua
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local AnimationService = require(ReplicatedStorage.EZAnimation)
+```
+
+### Initialize the Service with Your Animation List
+
+Call `AnimationService.init()` and pass an options table containing a `List` field. Each key in `List` is a string identifier you will use in every subsequent method call, and each value is the `rbxassetid://` string for your Roblox animation asset.
+
+```lua
+local anim = AnimationService.init({
+    List = {
+        idle   = "rbxassetid://1234567890",
+        run    = "rbxassetid://0987654321",
+        attack = "rbxassetid://1122334455",
+    }
+})
+```
+
+<Note>
+  Replace the asset IDs above with real animation asset IDs from your Roblox account or the Toolbox. You must own or have permission to use the animation assets.
+</Note>
+
+### Play an Animation
+
+Call `anim:play()` with the model you want to animate, the string ID from your list, the priority level, and whether the animation should loop.
+
+```lua
+-- Assuming 'character' is a Model with an Animator (e.g. a player character)
+local character = game.Players.LocalPlayer.Character
+
+anim:play(character, "idle", "Idle", true)
+```
+
+The `play` method returns the `AnimationTrack` so you can inspect or manipulate it further if needed.
+
+<Info>
+  The third argument is the `animType` string — it maps to a Roblox `AnimationPriority` level. See the [Priorities](/concepts/priorities) page for the full list. If you omit it, EZAnimation defaults to `"Movement"`.
+</Info>
+
+### Stop an Animation
+
+Call `anim:stop()` with the same model and string ID to stop that specific animation. Pass an optional `fadeTime` in seconds to control how quickly the animation blends out.
+
+```lua
+anim:stop(character, "idle", 0.2)
+```
+
+To stop **all** animations on a model at once, use `stopAll`:
+
+```lua
+anim:stopAll(character, 0.2)
+```
+
+</Steps>
+
+## Complete Working Example
+
+Here is the full script combining every step above into a single, copy-pasteable example. Place this in a `LocalScript` inside `StarterCharacterScripts`.
+
+```lua
+-- LocalScript inside StarterCharacterScripts
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players           = game:GetService("Players")
+
+-- 1. Require EZAnimation
+local AnimationService = require(ReplicatedStorage.EZAnimation)
+
+-- 2. Initialize with your animation list
+local anim = AnimationService.init({
+    List = {
+        idle   = "rbxassetid://1234567890",
+        run    = "rbxassetid://0987654321",
+        attack = "rbxassetid://1122334455",
+    }
+})
+
+-- 3. Grab the local player's character
+local player    = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+-- 4. Play the idle animation (looped, Idle priority, 0.2 s fade-in)
+anim:play(character, "idle", "Idle", true, 0.2)
+print("Playing idle animation")
+
+-- 5. After 5 seconds, stop the idle animation
+task.delay(5, function()
+    anim:stop(character, "idle", 0.3)
+    print("Stopped idle animation")
+end)
+```
+
+<Warning>
+  Always make sure the `character` model is fully loaded before calling `play`. Using `player.CharacterAdded:Wait()` (as shown above) ensures the character exists before you attempt to animate it.
+</Warning>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Animation List" icon="book-open" href="/concepts/animation-list">
+    Learn how to structure and organize the `List` table for larger projects.
+  </Card>
+  <Card title="Priorities" icon="arrow-up-wide-short" href="/concepts/priorities">
+    Understand how priority levels control which animations override others.
+  </Card>
+  <Card title="Fade Time" icon="clock" href="/concepts/fade-time">
+    Fine-tune blend durations for smooth or instant animation transitions.
+  </Card>
+</CardGroup>

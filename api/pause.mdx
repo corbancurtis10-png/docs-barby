@@ -1,0 +1,69 @@
+---
+title: "Pause a Playing Animation on a Rig"
+sidebarTitle: "pause"
+description: "Freeze a named animation in place by setting its playback speed to zero. The current frame is preserved so resume can restart from exactly that point."
+---
+
+The `pause` method freezes an animation mid-playback by calling `AdjustSpeed(0)` on the underlying `AnimationTrack`. The character's pose is held exactly at the current frame — no blending, no snapping — and EZAnimation stores the track's previous speed as a `PausedSpeed` attribute so that `resume` can restore it perfectly. This is ideal for cutscenes, ability charge-ups, or any situation where you need to temporarily freeze a character's motion without discarding the animation state.
+
+<Card title="AnimationService:pause()" icon="pause">
+  `pause(model, id)`
+</Card>
+
+## Parameters
+
+<ParamField body="model" type="Model" required>
+  The character or rig that is currently running the animation you want to pause. Must contain a `Humanoid` with an `Animator`.
+</ParamField>
+
+<ParamField body="id" type="string" required>
+  The key of the animation to pause, as defined in your `init` `List`. The animation must already be playing on the model. Keys are case-sensitive.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="nil" type="nil">
+  `pause` does not return a value.
+</ResponseField>
+
+## Example
+
+```lua icon="pause"
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players           = game:GetService("Players")
+local UserInputService  = game:GetService("UserInputService")
+local EZAnimation       = require(ReplicatedStorage.EZAnimation)
+
+local AnimService = EZAnimation.init({
+    List = {
+        Run = "rbxassetid://1234567891",
+    },
+})
+
+local player    = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+-- Start a looping run animation
+AnimService:play(character, "Run", "Movement", true)
+
+-- Pause the run animation when the player presses P
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.P then
+        AnimService:pause(character, "Run")
+        print("Run animation paused")
+    end
+end)
+```
+
+<Note>
+  `pause` works by setting the animation's playback speed to `0`, not by unloading the track. The animation remains active and holds its current pose — it will **not** fire its `Stopped` event.
+</Note>
+
+<Tip>
+  After pausing, call `resume` to restore playback from the exact same frame. Avoid calling `stop` on a paused animation if you intend to resume it, as `stop` fully unloads the track.
+</Tip>
+
+<Warning>
+  If the animation identified by `id` is not currently playing when you call `pause`, the call will silently do nothing. Make sure the animation is active before pausing.
+</Warning>

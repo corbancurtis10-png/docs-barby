@@ -1,0 +1,177 @@
+---
+title: "Playing Animations with EZAnimation"
+sidebarTitle: "Play Animations"
+description: "Learn how to play animations on any Roblox model using EZAnimation's play() method, with control over priority, looping, and fade time."
+---
+
+The `play()` method is the primary way to start an animation on a model. You pass the model, a key from your animation `List`, a priority type, a looped flag, and an optional fade time. EZAnimation loads and caches the track automatically — if the animation is already playing when you call `play()`, it returns the existing track without restarting it.
+
+## Method Signature
+
+<Card title="AnimationService:play()" icon="play">
+  `play(model, id, animType, looped, fadeTime) → AnimationTrack`
+</Card>
+
+<ParamField path="model" type="Model" required>
+  The character model containing a `Humanoid` and `Animator`.
+</ParamField>
+
+<ParamField path="id" type="string" required>
+  A key from your animation `List` (e.g. `"Run"`, `"Idle"`, `"Attack"`). This must exactly match a key you passed to `init()`.
+</ParamField>
+
+<ParamField path="animType" type="string">
+  Priority tier. One of: `"Idle"`, `"Movement"`, `"Action"`, `"Action2"`, `"Action3"`, `"Action4"`. Defaults to `"Movement"` if omitted.
+</ParamField>
+
+<ParamField path="looped" type="boolean">
+  `true` to loop continuously; `false` to play once and stop. Defaults to `false`.
+</ParamField>
+
+<ParamField path="fadeTime" type="number">
+  Blend duration in seconds when transitioning into this animation. Defaults to `0.15`. Pass `0` for an instant cut.
+</ParamField>
+
+## Fade Behaviour
+
+Fade time controls how smoothly EZAnimation blends from the current pose into the new animation. A non-zero fade creates a natural-looking transition; a zero fade produces an immediate cut. Compare both approaches below using the same setup:
+
+```lua Setup
+local EZAnim = require(game.ReplicatedStorage.EZAnim)
+
+local AnimService = EZAnim.init({
+    List = {
+        Idle   = "rbxassetid://1234567890",
+        Run    = "rbxassetid://0987654321",
+        Attack = "rbxassetid://1122334455",
+    }
+})
+```
+
+<Tabs>
+  <Tab title="Play WITH Fade (0.3s)">
+    ```lua Play with fade
+    -- Smoothly blend into the Run animation over 0.3 seconds
+    local track = AnimService:play(
+        character,
+        "Run",        -- List key
+        "Movement",
+        true,         -- looped
+        0.3           -- fadeTime
+    )
+    ```
+
+    <Info>
+      **With Fade:** The character smoothly blends from their previous pose into the new animation over 0.3 seconds — no jarring pop between states. Ideal for locomotion transitions like Idle → Run.
+    </Info>
+  </Tab>
+  <Tab title="Play WITHOUT Fade (instant)">
+    ```lua Play without fade
+    -- Cut directly to the Run animation with no blend
+    local track = AnimService:play(
+        character,
+        "Run",        -- List key
+        "Movement",
+        true,         -- looped
+        0             -- fadeTime = 0 → instant cut
+    )
+    ```
+
+    <Info>
+      **Without Fade:** The character snaps directly to the first frame of the new animation with no blending — instant and crisp. Best for reactive actions like a parry or an ability burst.
+    </Info>
+  </Tab>
+</Tabs>
+
+## Looped vs One-Shot Animations
+
+Pass `true` for `looped` when an animation should repeat indefinitely (walking, idling). Pass `false` when the animation should play once and stop on its own (an attack swing, a jump, a reaction).
+
+<CodeGroup>
+```lua Looped Animation
+-- Idle animation that loops forever until you stop it
+local idleTrack = AnimService:play(
+    character,
+    "Idle",    -- key from List
+    "Idle",
+    true,      -- looped
+    0.2
+)
+```
+
+```lua One-Shot Animation
+-- Attack animation that plays once and finishes on its own
+local attackTrack = AnimService:play(
+    character,
+    "Attack",  -- key from List
+    "Action",
+    false,     -- one-shot
+    0.1
+)
+```
+</CodeGroup>
+
+<Note>
+  If you call `play()` on an animation that is already playing, EZAnimation returns the existing `AnimationTrack` without restarting it. This is safe to call every frame — it will not cause animation stuttering.
+</Note>
+
+## Priority Examples
+
+Animation priority determines which animation wins when multiple tracks are active at the same time. Higher-priority animations override lower-priority ones on the same joints. The priority ladder from lowest to highest is: `Idle → Movement → Action → Action2 → Action3 → Action4`.
+
+```lua Priority layering example
+local AnimService = EZAnim.init({
+    List = {
+        Breathe = "rbxassetid://1111111111",
+        Run     = "rbxassetid://2222222222",
+        Attack  = "rbxassetid://3333333333",
+        Charge  = "rbxassetid://4444444444",
+    }
+})
+
+-- Low-priority idle loop — plays when nothing else is active
+AnimService:play(character, "Breathe", "Idle", true, 0.2)
+
+-- Medium-priority run loop — overrides the idle on locomotion joints
+AnimService:play(character, "Run", "Movement", true, 0.15)
+
+-- High-priority attack — overrides run and idle for its duration
+AnimService:play(character, "Attack", "Action", false, 0.1)
+
+-- Even higher priority — Action2/3/4 for layered effects
+AnimService:play(character, "Charge", "Action2", false, 0.05)
+```
+
+<Tip>
+  Use `"Action"` or higher for combat and ability animations so they always override locomotion. Reserve `"Idle"` for ambient loops like breathing that should yield to everything else.
+</Tip>
+
+## Working with the Returned Track
+
+`play()` returns the underlying Roblox `AnimationTrack`. You can use it directly alongside EZAnimation's event helpers.
+
+```lua Using the returned track
+local AnimService = EZAnim.init({
+    List = { Attack = "rbxassetid://5555555555" }
+})
+
+local track = AnimService:play(character, "Attack", "Action", false, 0.15)
+
+-- Native Roblox track properties are available
+print("Animation length:", track.Length)
+print("Currently playing:", track.IsPlaying)
+
+-- Use EZAnimation helpers for events
+AnimService:onStopped(character, "Attack", function()
+    print("Attack animation finished!")
+end)
+```
+
+<CardGroup cols={2}>
+  <Card title="Stop Animations" icon="stop" href="/guides/stop-animations">
+    Learn how to stop a specific animation or all animations on a model.
+  </Card>
+  <Card title="Crossfade" icon="shuffle" href="/guides/crossfade">
+    Transition seamlessly between two animations using crossFade().
+  </Card>
+</CardGroup>

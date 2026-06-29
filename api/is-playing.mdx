@@ -1,0 +1,57 @@
+---
+title: "AnimationService:isPlaying() — EZAnimation API"
+sidebarTitle: "isPlaying"
+description: "Return true if the specified animation is currently active and playing on the given model, or false otherwise."
+---
+
+The `isPlaying` method gives you a quick boolean check to determine whether a particular animation is currently running on a model. It is useful for guard clauses that prevent the same animation from being started twice, for conditional branching in input handlers, and for debugging playback state without needing to hold a reference to the underlying `AnimationTrack`.
+
+<Card title="AnimationService:isPlaying()" icon="signal">
+  `isPlaying(model, id)`
+</Card>
+
+## Parameters
+
+<ParamField path="model" type="Model" required>
+  The Roblox `Model` instance to check. The method inspects the animation tracks currently active on this model's `Animator`.
+</ParamField>
+
+<ParamField path="id" type="string" required>
+  The animation ID key to check. This must match the key used when the animation was registered with `AnimationService`.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="isPlaying" type="boolean">
+  Returns `true` if the animation identified by `id` is currently playing on `model`, or `false` if it is stopped, has never been played, or the model is not found in the registry.
+</ResponseField>
+
+## Code Example
+
+```lua
+local AnimationService = require(game.ReplicatedStorage.EZAnimation)
+
+local function tryPlayAttack(character)
+    -- Don't interrupt an attack that's already mid-swing
+    if AnimationService:isPlaying(character, "attack_swing") then
+        print("Attack already in progress — input ignored")
+        return
+    end
+
+    AnimationService:play(character, "attack_swing")
+end
+
+-- Poll state for a UI indicator (not recommended for production; prefer onStopped)
+while AnimationService:isPlaying(character, "cutscene_intro") do
+    task.wait(0.1)
+end
+print("Cutscene finished")
+```
+
+<Note>
+  An animation that is fading out (i.e. `:Stop(fadeTime)` has been called but the fade is not yet complete) is still considered **playing** and will return `true`. The value transitions to `false` once the fade fully completes and the track is removed.
+</Note>
+
+<Tip>
+  Use `isPlaying` in input handlers as a lightweight guard to avoid stacking the same animation. For more complex sequencing, combine it with `onStopped` so you react to the end of the animation rather than polling on every frame.
+</Tip>

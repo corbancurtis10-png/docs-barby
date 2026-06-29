@@ -1,0 +1,72 @@
+---
+title: "AnimationService:ragdoll() — Enable Ragdoll Physics"
+sidebarTitle: "ragdoll"
+description: "Instantly enable ragdoll physics on a Humanoid model by replacing Motor6D joints with BallSocketConstraints and switching the Humanoid to Physics state."
+---
+
+`AnimationService:ragdoll()` converts a rigged `Model` into a fully physics-driven ragdoll in one call. Under the hood it disables every `Motor6D` joint, replaces them with `BallSocketConstraints`, sets the `Humanoid` to the `Physics` state, and enables `PlatformStand` so the character goes limp and tumbles naturally with Roblox's physics engine. You can optionally pass a `duration` so the model automatically recovers without any extra bookkeeping on your end.
+
+<Card title="AnimationService:ragdoll()" icon="person-falling">
+  `ragdoll(model, duration?) → void`
+</Card>
+
+<Info>
+  **Ragdoll demo:** When `ragdoll()` is called, the character immediately goes limp — joints unlock, `BallSocketConstraints` take over, and the body tumbles naturally under gravity and collision forces.
+</Info>
+
+## Parameters
+
+<ParamField path="model" type="Model" required>
+  The character `Model` to ragdoll. The model **must** contain a `Humanoid` and a standard R6 or R15 rig with `Motor6D` joints. Calling this on a model without a `Humanoid` will raise an error.
+</ParamField>
+
+<ParamField path="duration" type="number?">
+  Optional. If provided, `AnimationService:unragdoll()` is called automatically after this many seconds. Omit this parameter if you want to control recovery timing yourself.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="void" type="void">
+  This method does not return a value. Use `AnimationService:unragdoll()` to reverse the effect.
+</ResponseField>
+
+## Example
+
+```lua
+local AnimationService = require(game.ReplicatedStorage.EZAnimation)
+
+-- Ragdoll a character when they take lethal damage, auto-recover after 5 seconds
+game.Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        local humanoid = character:WaitForChild("Humanoid")
+
+        humanoid.Died:Connect(function()
+            -- Ragdoll with automatic 5-second recovery
+            AnimationService:ragdoll(character, 5)
+        end)
+    end)
+end)
+```
+
+```lua
+-- Manual control — ragdoll on hit, unragdoll when player presses a key
+local function onHit(character)
+    AnimationService:ragdoll(character)  -- no duration — manual recovery
+end
+
+local function onGetUp(character)
+    AnimationService:unragdoll(character)
+end
+```
+
+<Note>
+  `ragdoll()` sets `AutoRotate = false` and `PlatformStand = true` on the `Humanoid`. These are restored automatically when you call `unragdoll()`.
+</Note>
+
+<Tip>
+  Pair `ragdoll()` with a `duration` argument for knockback or stun effects where you want guaranteed recovery — it removes the need to manage your own `task.delay()` call.
+</Tip>
+
+<Warning>
+  Do **not** call `ragdoll()` on a model that is already ragdolled. The existing `BallSocketConstraints` will accumulate and recovery may behave incorrectly. Check your game state before calling this a second time on the same model.
+</Warning>

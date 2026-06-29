@@ -1,0 +1,144 @@
+---
+title: "Stopping Animations in EZAnimation"
+sidebarTitle: "Stop Animations"
+description: "Learn how to stop a single animation or all animations on a model using EZAnimation's stop(), stopAll(), and related methods."
+---
+
+EZAnimation gives you precise control over when animations end. You can stop a single animation by its List key, stop every animation on a model at once, or control the fade-out time to determine how abruptly the transition feels. Understanding the difference between a faded stop and an instant stop helps you pick the right approach for each situation.
+
+## Method Signatures
+
+<CardGroup cols={2}>
+  <Card title="AnimationService:stop()" icon="stop">
+    `stop(model, id, fadeTime)`
+  </Card>
+  <Card title="AnimationService:stopAll()" icon="circle-stop">
+    `stopAll(model, fadeTime)`
+  </Card>
+</CardGroup>
+
+<ParamField path="model" type="Model" required>
+  The character model the animation is playing on.
+</ParamField>
+
+<ParamField path="id" type="string | nil">
+  The List key of the animation to stop. Pass `nil` to stop **all** animations on the model — equivalent to calling `stopAll()`.
+</ParamField>
+
+<ParamField path="fadeTime" type="number">
+  How long (in seconds) the engine blends the animation out before it fully stops. Defaults to `0.15`. Pass `0` for an instant cut.
+</ParamField>
+
+## Fade Behaviour
+
+Just like playing, stopping supports a fade-out so the character doesn't snap to a T-pose mid-motion. A smooth fade looks natural in most situations; an instant stop is better for hard resets or death effects. Compare both below:
+
+```lua Setup
+local EZAnim = require(game.ReplicatedStorage.EZAnim)
+
+local AnimService = EZAnim.init({
+    List = {
+        Idle   = "rbxassetid://1234567890",
+        Run    = "rbxassetid://0987654321",
+        Attack = "rbxassetid://1122334455",
+    }
+})
+```
+
+<Tabs>
+  <Tab title="Stop WITH Fade (0.5s)">
+    ```lua Stop with fade
+    -- Fade the Run animation out over half a second
+    AnimService:stop(
+        character,
+        "Run",   -- List key
+        0.5      -- fadeTime
+    )
+    ```
+
+    <Info>
+      **With Fade:** The character gradually blends out of the animation over 0.5 seconds before fully stopping — looks natural and smooth. Great for transitioning from locomotion back to idle.
+    </Info>
+  </Tab>
+  <Tab title="Stop WITHOUT Fade (instant)">
+    ```lua Stop without fade
+    -- Cut the Run animation off immediately
+    AnimService:stop(
+        character,
+        "Run",   -- List key
+        0        -- fadeTime = 0 → instant cut
+    )
+    ```
+
+    <Info>
+      **Without Fade:** The animation cuts off immediately with no blending — useful for hard resets like death, teleports, or ability cancels where a gradual fade would feel wrong.
+    </Info>
+  </Tab>
+</Tabs>
+
+## Stopping All Animations
+
+Use `stopAll()` when you need to clear every active animation on a model in one call — for example when a character dies, respawns, or enters a cutscene. You can also pass `nil` as the `id` argument to `stop()` to achieve the same result.
+
+<CodeGroup>
+```lua Using stopAll()
+-- Stop every animation on the character with a short fade
+AnimService:stopAll(character, 0.2)
+```
+
+```lua Using stop() with nil id
+-- Passing nil as the id is identical to calling stopAll()
+AnimService:stop(character, nil, 0.2)
+```
+</CodeGroup>
+
+<Note>
+  Passing `nil` as the `id` parameter to `stop()` is a convenience shorthand for `stopAll()`. Both calls behave identically and respect the same `fadeTime` argument.
+</Note>
+
+## Stopping Specific Animations
+
+When you only want to stop one animation without affecting others — for example, stopping a weapon-hold loop while a movement animation keeps playing — pass the exact List key:
+
+```lua Stopping one animation while another continues
+-- Start two animations at different priorities
+AnimService:play(character, "Run",    "Movement", true, 0.2)  -- run loop
+AnimService:play(character, "Attack", "Action2",  true, 0.1)  -- weapon hold
+
+-- Later: stop only the weapon-hold without touching the run loop
+AnimService:stop(character, "Attack", 0.15)
+```
+
+## Pausing and Resuming
+
+If you need to freeze an animation in place rather than stopping it entirely, use `pause()` and `resume()`. This sets the playback speed to `0` and restores it when you resume — the track remains loaded and ready.
+
+```lua Pause and resume
+-- Freeze the animation mid-frame (speed → 0)
+AnimService:pause(character, "Attack")
+
+-- Later: restore the original playback speed
+AnimService:resume(character, "Attack")
+```
+
+<Tip>
+  Prefer `pause()` over `stop()` when you plan to continue the same animation shortly afterwards — it avoids the overhead of reloading the track.
+</Tip>
+
+## Full Reset
+
+`reset()` goes further than `stopAll()` — it stops every animation, clears the state value, and empties the animation queue in a single call. Use it when you need a completely clean slate.
+
+```lua Full reset
+-- Full cleanup: stop all, clear state, clear queue
+AnimService:reset(character)
+```
+
+<CardGroup cols={2}>
+  <Card title="Play Animations" icon="play" href="/guides/play-animations">
+    Learn how to start animations with priority and fade control.
+  </Card>
+  <Card title="Crossfade" icon="shuffle" href="/guides/crossfade">
+    Transition between two animations without a visible cut.
+  </Card>
+</CardGroup>

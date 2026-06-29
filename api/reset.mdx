@@ -1,0 +1,54 @@
+---
+title: "AnimationService:reset() — EZAnimation API"
+sidebarTitle: "reset"
+description: "Stop all animations on a model, clear its stored state, and empty its playback queue in a single call."
+---
+
+The `reset` method performs a full teardown of all animation data held for a model: every active animation is stopped immediately, the playback queue is emptied, and any state stored via `setState` is cleared. This is the recommended way to return a model to a clean animation state — for example, when a character dies, respawns, or transitions between distinct gameplay phases.
+
+<Card title="AnimationService:reset()" icon="arrow-rotate-left">
+  `reset(model)`
+</Card>
+
+## Parameters
+
+<ParamField path="model" type="Model" required>
+  The Roblox `Model` instance to reset. All animation tracks, queued animations, and stored state associated with this model will be discarded.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="void" type="nil">
+  This method does not return a value. All effects are applied synchronously before the call returns.
+</ResponseField>
+
+## Code Example
+
+```lua
+local AnimationService = require(game.ReplicatedStorage.EZAnimation)
+
+local function onCharacterDied(character)
+    -- Immediately stop everything and clean up
+    AnimationService:reset(character)
+
+    -- Play the death animation on a fresh slate
+    AnimationService:play(character, "death")
+end
+
+-- Connect to humanoid death event
+character.Humanoid.Died:Connect(function()
+    onCharacterDied(character)
+end)
+```
+
+<Warning>
+  `reset` stops animations **immediately** with no fade-out. If you want a smooth transition, call `:Stop(fadeTime)` on the active `AnimationTrack` before calling `reset`, or use a brief delay.
+</Warning>
+
+<Warning>
+  Any `RBXScriptConnection` objects returned by `onMarker` or `onStopped` are **not** automatically disconnected by `reset`. Disconnect them manually before calling `reset` if you no longer need those callbacks, to avoid memory leaks.
+</Warning>
+
+<Tip>
+  Call `reset` on character removal (`Players.PlayerRemoving` or `character.AncestryChanged`) to ensure no stale animation data lingers in the service's internal registry after the model is destroyed.
+</Tip>

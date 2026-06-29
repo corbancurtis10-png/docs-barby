@@ -1,0 +1,159 @@
+---
+title: "Crossfading Between Animations with EZAnimation"
+sidebarTitle: "Crossfade"
+description: "Use EZAnimation's crossFade() to smoothly transition between two animations with a single call, keeping fade time consistent across both tracks."
+---
+
+A crossfade transitions your character from one animation to another in a single, coordinated step. Under the hood, `crossFade()` stops the outgoing animation and starts the incoming one using the **same fade time** for both — this keeps the blend perfectly symmetrical and prevents the brief snap or overlap you can get when manually calling `stop()` and `play()` separately.
+
+## Method Signature
+
+<Card title="AnimationService:crossFade()" icon="shuffle">
+  `crossFade(model, fromId, toId, time) → AnimationTrack`
+</Card>
+
+<ParamField path="model" type="Model" required>
+  The character model the animations are playing on.
+</ParamField>
+
+<ParamField path="fromId" type="string" required>
+  The List key of the animation to fade out and stop.
+</ParamField>
+
+<ParamField path="toId" type="string" required>
+  The List key of the animation to fade in and start playing.
+</ParamField>
+
+<ParamField path="time" type="number">
+  The fade duration in seconds. Both the outgoing and incoming animation use this same value. Defaults to `0.15`.
+</ParamField>
+
+## Basic Example: Run to Idle
+
+The most common crossfade is transitioning from a movement animation back to idle when a character stops moving. Passing the same `time` to both sides keeps the blend natural.
+
+```lua Run to Idle crossfade
+local EZAnim = require(game.ReplicatedStorage.EZAnim)
+
+local AnimService = EZAnim.init({
+    List = {
+        Idle = "rbxassetid://1234567890",
+        Run  = "rbxassetid://0987654321",
+    }
+})
+
+-- Character starts running
+AnimService:play(character, "Run", "Movement", true, 0.2)
+
+-- Later: player releases movement key — crossfade to idle
+local idleTrack = AnimService:crossFade(character, "Run", "Idle", 0.2)
+```
+
+`crossFade()` returns the new `AnimationTrack` for the incoming animation so you can inspect it, adjust speed, or connect events immediately.
+
+## Choosing the Right Fade Time
+
+The `time` parameter has a big impact on how the transition feels. Short values feel snappy and responsive; longer values feel cinematic and weighty.
+
+<Tabs>
+  <Tab title="Snappy (0.1 – 0.3s)">
+    ```lua Snappy combat transition
+    local AnimService = EZAnim.init({
+        List = {
+            Attack = "rbxassetid://1111111111",
+            Run    = "rbxassetid://2222222222",
+        }
+    })
+
+    -- Fast combat transition — attack to run feels responsive
+    AnimService:crossFade(character, "Attack", "Run", 0.15)
+    ```
+
+    Use short fade times for:
+    - Combat actions where responsiveness matters
+    - Quick state changes driven by player input
+    - Looping animations with natural loop points
+  </Tab>
+  <Tab title="Cinematic (0.5s+)">
+    ```lua Cinematic transition
+    local AnimService = EZAnim.init({
+        List = {
+            Idle    = "rbxassetid://1111111111",
+            Victory = "rbxassetid://3333333333",
+        }
+    })
+
+    -- Slow cinematic blend — idle to victory pose feels dramatic
+    AnimService:crossFade(character, "Idle", "Victory", 0.6)
+    ```
+
+    Use longer fade times for:
+    - Cutscene transitions between poses
+    - Emotes and expressive animations
+    - NPC behaviours where smoothness matters more than speed
+  </Tab>
+</Tabs>
+
+<Tip>
+  As a general starting point, use `0.15`–`0.2s` for gameplay transitions and `0.4`–`0.6s` for story or cinematic moments.
+</Tip>
+
+## crossFade() vs stop() + play()
+
+Both approaches can produce a transition, but they behave differently in subtle ways:
+
+| | `crossFade()` | `stop()` + `play()` |
+|---|---|---|
+| Fade time consistency | Both sides use the same value | You control each fade independently |
+| Lines of code | One call | Two calls |
+| Return value | Returns the new `AnimationTrack` | `play()` returns the new track |
+| Use case | Standard transitions | When outgoing and incoming fades need different durations |
+
+```lua Comparison
+-- crossFade: both sides fade over 0.2s in one call
+AnimService:crossFade(character, "Run", "Idle", 0.2)
+
+-- Equivalent manual approach with matching fade times
+AnimService:stop(character, "Run", 0.2)
+AnimService:play(character, "Idle", "Idle", true, 0.2)
+```
+
+<Note>
+  If you need the outgoing fade to be different from the incoming fade — for example, cutting out instantly while blending in slowly — use separate `stop()` and `play()` calls instead.
+</Note>
+
+## Chaining Multiple Crossfades
+
+You can chain crossfades to move through a sequence of animation states, such as cycling through combat stances:
+
+```lua Chaining stances
+local AnimService = EZAnim.init({
+    List = {
+        Stance1 = "rbxassetid://1000000001",
+        Stance2 = "rbxassetid://1000000002",
+        Stance3 = "rbxassetid://1000000003",
+    }
+})
+
+-- Start in stance 1
+AnimService:play(character, "Stance1", "Action", true, 0.2)
+
+-- On player input: advance to stance 2
+AnimService:crossFade(character, "Stance1", "Stance2", 0.2)
+
+-- On player input again: advance to stance 3
+AnimService:crossFade(character, "Stance2", "Stance3", 0.2)
+```
+
+<Warning>
+  Make sure the `fromId` animation is actually playing before you call `crossFade()`. Passing a key that is not currently active will still play the `toId` animation, but the fade-out for `fromId` will have no visible effect.
+</Warning>
+
+<CardGroup cols={2}>
+  <Card title="Play Animations" icon="play" href="/guides/play-animations">
+    Understand priority, looping, and fade-in when starting an animation.
+  </Card>
+  <Card title="Queue" icon="list" href="/guides/queue">
+    Automatically chain one-shot animations back-to-back with the queue.
+  </Card>
+</CardGroup>

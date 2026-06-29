@@ -1,0 +1,72 @@
+---
+title: "Resume a Paused Animation on a Rig"
+sidebarTitle: "resume"
+description: "Restore a previously paused animation to its original playback speed, continuing from the exact frame it was frozen on without restarting the track."
+---
+
+The `resume` method brings a paused animation back to life by reading the `PausedSpeed` attribute that `pause` stored and calling `AdjustSpeed` with that value. Playback continues from the exact frame the animation was frozen on, so there is no visible jump or restart. You should always pair `resume` with a preceding `pause` call — the two methods are designed to work together as a freeze/unfreeze cycle that preserves full animation continuity.
+
+<Card title="AnimationService:resume()" icon="rotate-right">
+  `resume(model, id)`
+</Card>
+
+## Parameters
+
+<ParamField body="model" type="Model" required>
+  The character or rig that holds the paused animation. Must contain a `Humanoid` with an `Animator`.
+</ParamField>
+
+<ParamField body="id" type="string" required>
+  The key of the animation to resume, as defined in your `init` `List`. This should be the same `id` you previously passed to `pause`. Keys are case-sensitive.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="nil" type="nil">
+  `resume` does not return a value.
+</ResponseField>
+
+## Example
+
+```lua icon="rotate-right"
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players           = game:GetService("Players")
+local UserInputService  = game:GetService("UserInputService")
+local EZAnimation       = require(ReplicatedStorage.EZAnimation)
+
+local AnimService = EZAnimation.init({
+    List = {
+        Run = "rbxassetid://1234567891",
+    },
+})
+
+local player    = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local paused    = false
+
+AnimService:play(character, "Run", "Movement", true)
+
+-- Toggle pause/resume with the P key
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.P then
+        if not paused then
+            AnimService:pause(character, "Run")
+            paused = true
+            print("Run paused")
+        else
+            AnimService:resume(character, "Run")
+            paused = false
+            print("Run resumed")
+        end
+    end
+end)
+```
+
+<Note>
+  `resume` reads the `PausedSpeed` attribute set by `pause`. If you call `resume` on an animation that was never paused via EZAnimation, the attribute will be absent and the speed may not be restored correctly. Always use `pause` and `resume` as a matched pair.
+</Note>
+
+<Tip>
+  You can check whether an animation is currently paused by reading the `PausedSpeed` attribute on the model: `model:GetAttribute("PausedSpeed_" .. id)`. If it exists and is non-nil, the animation has been paused by EZAnimation.
+</Tip>

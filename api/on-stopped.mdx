@@ -1,0 +1,67 @@
+---
+title: "AnimationService:onStopped() — EZAnimation API"
+sidebarTitle: "onStopped"
+description: "Register a callback that fires once when the specified animation stops playing on the given model."
+---
+
+The `onStopped` method connects a callback to the moment a specific animation finishes on a model — whether it plays to the end naturally, is stopped manually, or is interrupted. This is the cleanest way to chain follow-up logic after an animation completes without polling `isPlaying` in a loop. The method returns an `RBXScriptConnection` you can store and disconnect if the callback becomes unnecessary before the animation ends.
+
+<Card title="AnimationService:onStopped()" icon="circle-check">
+  `onStopped(model, id, callback)`
+</Card>
+
+## Parameters
+
+<ParamField path="model" type="Model" required>
+  The Roblox `Model` instance on which the animation is playing.
+</ParamField>
+
+<ParamField path="id" type="string" required>
+  The animation ID key to listen to. This must match the key used when the animation was registered with `AnimationService`.
+</ParamField>
+
+<ParamField path="callback" type="function" required>
+  The function to call when the animation stops. The callback receives no arguments.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="RBXScriptConnection" type="RBXScriptConnection">
+  A connection object. Call `:Disconnect()` on it to cancel the callback before it fires — for example, if the character is removed before the animation ends.
+</ResponseField>
+
+## Code Example
+
+```lua
+local AnimationService = require(game.ReplicatedStorage.EZAnimation)
+
+-- Play an emote and re-enable controls once it finishes
+local function playEmote(character, emoteId)
+    disableControls(character)
+    AnimationService:play(character, emoteId)
+
+    local connection = AnimationService:onStopped(character, emoteId, function()
+        enableControls(character)
+        print(emoteId .. " finished — controls restored")
+    end)
+
+    -- Safety: disconnect if the character is removed mid-emote
+    character.AncestryChanged:Connect(function()
+        connection:Disconnect()
+    end)
+end
+
+playEmote(character, "emote_wave")
+```
+
+<Note>
+  The callback fires on **every** stop event for the given animation — including manual stops triggered by your own code or by `reset`. If you only want the callback to fire for a natural completion, check inside the callback whether the stop was intentional using your own state tracking.
+</Note>
+
+<Tip>
+  Prefer `onStopped` over `task.wait`-based timing. Waiting for a fixed duration can desync if the animation speed changes, whereas `onStopped` fires at the exact moment the track ends regardless of `Speed`.
+</Tip>
+
+<Warning>
+  For looped animations, `onStopped` will only fire when the loop is explicitly stopped — it does **not** fire at the end of each loop cycle. If you need per-cycle callbacks on a looped animation, use `onMarker` with a marker placed at the end of the timeline.
+</Warning>

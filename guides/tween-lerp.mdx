@@ -1,0 +1,198 @@
+---
+title: "Tweening and Lerping Instances with EZAnimation"
+sidebarTitle: "Tween & Lerp"
+description: "Use EZAnimation's tween() to animate instance properties and lerp() to smoothly move BaseParts or Models over time using Heartbeat."
+---
+
+EZAnimation bundles two motion utilities alongside its animation system: `tween()` and `lerp()`. Both drive smooth changes on Roblox instances, but they serve different purposes. Use `tween()` for properties like color, transparency, or size — anything Roblox's `TweenService` supports. Use `lerp()` when you need direct control over a part's position or `CFrame`, driven frame-by-frame through `RunService.Heartbeat` with an optional custom easing function.
+
+<Info>
+  **Quick reference:**
+  - `tween()` → properties (Color3, Transparency, Size, etc.)
+  - `lerp()` → position / CFrame movement on a `BasePart` or `Model`
+</Info>
+
+## tween()
+
+`tween()` is a thin wrapper around `TweenService:Create():Play()`. It creates the tween, starts it immediately, and returns the `Tween` object so you can track completion or cancel it.
+
+### Method Signature
+
+<ParamField path="instance" type="Instance" required>
+  The Roblox instance whose properties you want to animate.
+</ParamField>
+
+<ParamField path="info" type="TweenInfo" required>
+  A `TweenInfo` value describing duration, easing style, easing direction, and repeat behaviour.
+</ParamField>
+
+<ParamField path="goal" type="table" required>
+  A dictionary of property names and their target values (the same format as `TweenService:Create()`).
+</ParamField>
+
+### Example: Tween Color and Transparency
+
+```lua Tween color and transparency
+local EZAnim = require(game.ReplicatedStorage.EZAnim)
+local AnimService = EZAnim.init({ List = {} })  -- no animations needed for tween/lerp
+
+local part = workspace.SomePart
+
+-- Fade the part out and change its color over 1.5 seconds
+local tween = AnimService:tween(
+    part,
+    TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+    {
+        Color        = Color3.fromRGB(255, 50, 50),
+        Transparency = 0.8,
+    }
+)
+
+-- Optional: do something when the tween finishes
+tween.Completed:Connect(function()
+    print("Tween finished!")
+end)
+```
+
+### Example: Tween Part Size
+
+```lua
+-- Expand a part to double its current size over 0.5 seconds
+AnimService:tween(
+    workspace.GlowPart,
+    TweenInfo.new(0.5, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out),
+    { Size = Vector3.new(10, 10, 10) }
+)
+```
+
+## lerp()
+
+`lerp()` moves a `BasePart`'s `Position` (Vector3) or `CFrame` from a start value to an end value over a set duration using `RunService.Heartbeat`. You can pass an optional `alphaFn` to replace the default linear interpolation with any easing curve you like.
+
+### Method Signature
+
+<ParamField path="instance" type="BasePart | Model" required>
+  The part or model to move.
+</ParamField>
+
+<ParamField path="fromValue" type="Vector3 | CFrame" required>
+  The starting position or CFrame.
+</ParamField>
+
+<ParamField path="toValue" type="Vector3 | CFrame" required>
+  The target position or CFrame.
+</ParamField>
+
+<ParamField path="duration" type="number" required>
+  How long the lerp takes to complete, in seconds.
+</ParamField>
+
+<ParamField path="alphaFn" type="function">
+  Optional. A function `(alpha: number) -> number` that remaps the linear `0..1` progress into a custom curve. Receives the raw alpha and must return a value in `0..1`.
+</ParamField>
+
+### Example: Move a Part Between Two Positions
+
+```lua
+local part = workspace.MovingPlatform
+
+local START_POS = Vector3.new(0, 5, 0)
+local END_POS   = Vector3.new(0, 5, 50)
+
+-- Move the platform from start to end over 3 seconds (linear)
+local connection = AnimService:lerp(part, START_POS, END_POS, 3)
+```
+
+### Example: Lerp with a Custom Easing Function
+
+Providing an `alphaFn` lets you replace linear motion with any easing curve. The function receives the raw `0..1` alpha and should return a remapped `0..1` value.
+
+```lua
+local part = workspace.MovingPlatform
+
+local START_POS = Vector3.new(0, 5, 0)
+local END_POS   = Vector3.new(0, 5, 50)
+
+-- Quadratic ease-in: starts slow, accelerates towards the end
+local function easeInQuad(alpha)
+    return alpha * alpha
+end
+
+local connection = AnimService:lerp(part, START_POS, END_POS, 3, easeInQuad)
+```
+
+<Tabs>
+  <Tab title="Common Easing Functions">
+    ```lua
+    -- Ease-in (starts slow)
+    local function easeIn(a)  return a * a end
+
+    -- Ease-out (ends slow)
+    local function easeOut(a) return 1 - (1 - a) * (1 - a) end
+
+    -- Ease-in-out (slow at both ends)
+    local function easeInOut(a)
+        return a < 0.5
+            and 2 * a * a
+            or 1 - (-2 * a + 2)^2 / 2
+    end
+
+    -- Overshoot (bounces past the target slightly)
+    local function overshoot(a)
+        local c1 = 1.70158
+        local c3 = c1 + 1
+        return 1 + c3 * (a - 1)^3 + c1 * (a - 1)^2
+    end
+    ```
+  </Tab>
+  <Tab title="CFrame Lerp Example">
+    ```lua
+    local part = workspace.Camera_Dolly
+
+    local FROM_CF = CFrame.new(0, 10, -20) * CFrame.Angles(0, math.rad(90), 0)
+    local TO_CF   = CFrame.new(0, 10, 20)  * CFrame.Angles(0, math.rad(-90), 0)
+
+    -- Smoothly pan and rotate the dolly over 4 seconds
+    local connection = AnimService:lerp(part, FROM_CF, TO_CF, 4, function(a)
+        return 1 - (1 - a)^3  -- cubic ease-out
+    end)
+    ```
+  </Tab>
+</Tabs>
+
+<Tip>
+  `lerp()` returns a `RBXScriptConnection`. Disconnect it at any point to immediately cancel the lerp and leave the part at its current mid-lerp position — useful for interrupting a platform mid-travel or aborting a camera move.
+
+  ```lua
+  local connection = AnimService:lerp(part, START_POS, END_POS, 5)
+
+  -- Cancel the lerp early (e.g. on a player trigger)
+  task.delay(2, function()
+      connection:Disconnect()
+      print("Lerp cancelled at alpha ~0.4")
+  end)
+  ```
+</Tip>
+
+## Choosing Between tween() and lerp()
+
+| | `tween()` | `lerp()` |
+|---|---|---|
+| Powered by | `TweenService` | `RunService.Heartbeat` |
+| Best for | Color, Transparency, Size, etc. | Position, CFrame movement |
+| Easing | Roblox `EasingStyle` enum | Any custom `alphaFn` |
+| Cancellable | `tween:Cancel()` | `connection:Disconnect()` |
+| Returns | `Tween` | `RBXScriptConnection` |
+
+<Note>
+  Both `tween()` and `lerp()` operate on the **client** by default in a `LocalScript`. If you need server-side property changes, run these calls in a `Script` on the server and replicate results as needed.
+</Note>
+
+<CardGroup cols={2}>
+  <Card title="Play Animations" icon="play" href="/guides/play-animations">
+    Start character animations with priority and fade time control.
+  </Card>
+  <Card title="Ragdoll" icon="person-falling" href="/guides/ragdoll">
+    Switch characters to physics-driven ragdoll with a single call.
+  </Card>
+</CardGroup>

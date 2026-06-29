@@ -1,0 +1,87 @@
+---
+title: "Cross-Fade Between Two Animations"
+sidebarTitle: "crossFade"
+description: "Smoothly transition from one playing animation to another in a single call. Fades out the source track and fades in the destination with matching timing."
+---
+
+The `crossFade` method provides a polished one-call transition between two animations. It stops the source animation (`fromId`) with a fade-out and simultaneously starts the destination animation (`toId`) with a fade-in — both using the same `time` value so the blend is perfectly symmetrical. This is the recommended way to switch between major animation states such as walking to running, idle to combat stance, or any scenario where a hard cut would look jarring. You get back the new `AnimationTrack` so you can attach events or adjust it further right away.
+
+<Card title="AnimationService:crossFade()" icon="shuffle">
+  `crossFade(model, fromId, toId, time) → AnimationTrack`
+</Card>
+
+## Parameters
+
+<ParamField body="model" type="Model" required>
+  The character or rig to transition on. Must contain a `Humanoid` with an `Animator`.
+</ParamField>
+
+<ParamField body="fromId" type="string" required>
+  The key of the currently playing animation to fade out. Must match a key in your `init` `List`. If the animation is not playing, it is skipped gracefully and only the fade-in occurs. Keys are case-sensitive.
+</ParamField>
+
+<ParamField body="toId" type="string" required>
+  The key of the animation to fade in and start playing. Must match a key in your `init` `List`. Keys are case-sensitive.
+</ParamField>
+
+<ParamField body="time" type="number" default="0.15">
+  Fade duration in seconds, applied identically to both the fade-out of `fromId` and the fade-in of `toId`. Larger values create slower, more cinematic transitions; smaller values produce snappier cuts.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="AnimationTrack" type="AnimationTrack">
+  The `AnimationTrack` for the newly started `toId` animation. You can use it to listen for events, adjust playback speed, or inspect `IsPlaying`.
+</ResponseField>
+
+## Example
+
+```lua icon="shuffle"
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players           = game:GetService("Players")
+local EZAnimation       = require(ReplicatedStorage.EZAnimation)
+
+local AnimService = EZAnimation.init({
+    List = {
+        Walk   = "rbxassetid://1234567891",
+        Run    = "rbxassetid://1234567892",
+        Sprint = "rbxassetid://1234567893",
+    },
+})
+
+local player    = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid  = character:FindFirstChildOfClass("Humanoid")
+
+-- Start with a walking animation
+AnimService:play(character, "Walk", "Movement", true)
+
+-- Cross-fade from Walk → Run when the player's speed crosses a threshold
+humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+    local speed = humanoid.WalkSpeed
+    if speed >= 20 then
+        -- Smooth 0.3 s transition from Walk to Sprint
+        local sprintTrack = AnimService:crossFade(character, "Walk", "Sprint", 0.3)
+        sprintTrack.Stopped:Connect(function()
+            print("Sprint animation ended")
+        end)
+    elseif speed >= 10 then
+        -- Quick 0.2 s swap to run
+        AnimService:crossFade(character, "Sprint", "Run", 0.2)
+    else
+        AnimService:crossFade(character, "Run", "Walk", 0.25)
+    end
+end)
+```
+
+<Note>
+  Both `fromId` and `toId` use the **same** `time` value for their respective fade-out and fade-in. If you need asymmetric timing — for example, a fast fade-out but a slow fade-in — call `stop` and `play` separately with individual `fadeTime` arguments instead.
+</Note>
+
+<Tip>
+  `crossFade` calls `play` internally for `toId`, which means it inherits the deduplication behaviour: if `toId` is already playing, it will return the existing track rather than restarting it. This makes it safe to call `crossFade` repeatedly (e.g. inside a loop or event handler) without causing duplicate tracks.
+</Tip>
+
+<Warning>
+  If `toId` does not exist in your `init` `List`, `crossFade` will throw a runtime error. Always verify that both `fromId` and `toId` are registered before calling this method, especially when driving transitions from dynamic data.
+</Warning>

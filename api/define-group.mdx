@@ -1,0 +1,56 @@
+---
+title: "AnimationService:defineGroup() — EZAnimation API"
+sidebarTitle: "defineGroup"
+description: "Register a named group of animation IDs so you can play a random entry from the group with a single playGroup() call."
+---
+
+The `defineGroup` method registers a named collection of animation ID keys under a single group name. Once defined, you can reference the group by name in `playGroup` to pick and play a random animation from the set — ideal for adding natural variation to repetitive actions such as idles, footsteps, or hit reactions.
+
+<Card title="AnimationService:defineGroup()" icon="layer-group">
+  `defineGroup(name, list)`
+</Card>
+
+## Parameters
+
+<ParamField path="name" type="string" required>
+  A unique name for this animation group. You will use this same name when calling `playGroup`. Group names are case-sensitive.
+</ParamField>
+
+<ParamField path="list" type="table<number, string>" required>
+  An ordered array of animation ID keys to include in the group. Each entry must be a string key previously registered with `AnimationService`. Duplicate entries are allowed and will increase the probability of that animation being selected.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="void" type="nil">
+  This method does not return a value. The group is stored internally and is available immediately for use with `playGroup`.
+</ResponseField>
+
+## Code Example
+
+```lua
+local AnimationService = require(game.ReplicatedStorage.EZAnimation)
+
+-- Define a group of idle variation animations
+AnimationService:defineGroup("idle_variants", {
+    "idle_normal",
+    "idle_stretch",
+    "idle_lookAround",
+    "idle_normal", -- listed twice → higher chance of being picked
+})
+
+-- Later, play a random idle from the group
+AnimationService:playGroup(character, "idle_variants")
+```
+
+<Note>
+  `defineGroup` is typically called **once** at initialization (e.g. in a `Script` that runs on server start) rather than every time you want to play an animation. Calling it multiple times with the same `name` will overwrite the previous definition.
+</Note>
+
+<Tip>
+  You can weight the probability of specific animations by including their key more than once in the `list` array. For example, adding `"idle_normal"` three times makes it three times more likely to be chosen than a key listed only once.
+</Tip>
+
+<Warning>
+  All animation ID keys supplied in `list` must be registered with `AnimationService` before `playGroup` is called. An unrecognised key will cause a runtime error when that entry is selected.
+</Warning>

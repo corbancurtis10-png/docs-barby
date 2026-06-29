@@ -1,0 +1,73 @@
+---
+title: "Stop a Playing Animation on a Rig"
+sidebarTitle: "stop"
+description: "Stop one named animation — or every animation — on a model with a configurable blend-out fade time. Omit the id to stop all at once."
+---
+
+The `stop` method ends playback of a named animation on the target model, blending it out over a configurable fade duration so the transition feels smooth rather than snapping to a static pose. When you omit the `id` argument entirely, `stop` behaves exactly like `stopAll` and halts every animation currently running on that rig. This dual behaviour makes `stop` a convenient single call for both targeted and blanket teardown scenarios.
+
+<Card title="AnimationService:stop()" icon="stop">
+  `stop(model, id, fadeTime)`
+</Card>
+
+## Parameters
+
+<ParamField body="model" type="Model" required>
+  The character or rig whose animation you want to stop. Must contain a `Humanoid` with an `Animator`.
+</ParamField>
+
+<ParamField body="id" type="string">
+  The key of the animation to stop, as defined in your `init` `List`. If you pass `nil` or omit this argument, **all** animations on the model are stopped. Keys are case-sensitive.
+</ParamField>
+
+<ParamField body="fadeTime" type="number" default="0.15">
+  Blend-out duration in seconds. The animation's weight eases to zero over this period before the track is destroyed. Set to `0` for an instant cut.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="nil" type="nil">
+  `stop` does not return a value.
+</ResponseField>
+
+## Example
+
+```lua icon="stop"
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players           = game:GetService("Players")
+local EZAnimation       = require(ReplicatedStorage.EZAnimation)
+
+local AnimService = EZAnimation.init({
+    List = {
+        Idle   = "rbxassetid://1234567890",
+        Run    = "rbxassetid://1234567891",
+        Attack = "rbxassetid://1234567892",
+    },
+})
+
+local player    = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+-- Start a looping run animation
+AnimService:play(character, "Run", "Movement", true)
+
+task.wait(3)
+
+-- Stop just the run animation with the default 0.15 s fade
+AnimService:stop(character, "Run")
+
+-- Stop ALL animations on the character instantly
+AnimService:stop(character, nil, 0)
+```
+
+<Note>
+  Passing `nil` as `id` (or simply omitting it) stops **every** animation on the model. If you only want to stop a specific track, always provide the `id`.
+</Note>
+
+<Tip>
+  Increase `fadeTime` (e.g. `0.5`) when stopping an action animation and returning to an idle state — the extra blend time gives characters a more natural deceleration feel.
+</Tip>
+
+<Warning>
+  If the animation specified by `id` is not currently playing, `stop` exits silently without error. You do not need to guard calls with an `IsPlaying` check.
+</Warning>

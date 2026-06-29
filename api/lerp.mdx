@@ -1,0 +1,97 @@
+---
+title: "AnimationService:lerp() — Smooth Position Interpolation"
+sidebarTitle: "lerp"
+description: "Smoothly interpolate a BasePart's Position or CFrame, or a Model's pivot, between two values over a set duration using RunService.Heartbeat."
+---
+
+`AnimationService:lerp()` gives you frame-accurate linear (or custom-eased) interpolation for spatial properties without needing to manage a `RunService` connection yourself. You provide a start value, an end value, a duration, and an optional easing function — EZAnimation drives the interpolation every `Heartbeat` and hands you back the connection so you can cancel it whenever you like.
+
+<Card title="AnimationService:lerp()" icon="route">
+  `lerp(instance, fromValue, toValue, duration, alphaFn) → RBXScriptConnection`
+</Card>
+
+## Parameters
+
+<ParamField path="instance" type="Instance" required>
+  The object to move. Accepted types:
+
+  - **`BasePart`** — interpolates `Position` (when given `Vector3` values) or `CFrame` (when given `CFrame` values).
+  - **`Model`** — calls `Model:PivotTo()` each frame using `CFrame` values.
+</ParamField>
+
+<ParamField path="fromValue" type="Vector3 | CFrame" required>
+  The starting value. Must match the type of `toValue`. If you pass a `Vector3`, the instance's `Position` is driven; if you pass a `CFrame`, the full orientation is driven as well.
+</ParamField>
+
+<ParamField path="toValue" type="Vector3 | CFrame" required>
+  The destination value. Must be the same type as `fromValue`.
+</ParamField>
+
+<ParamField path="duration" type="number" required>
+  How long the interpolation should take, in seconds. A value of `0` will snap to `toValue` on the next `Heartbeat`.
+</ParamField>
+
+<ParamField path="alphaFn" type="((alpha: number) -> number)?">
+  An optional easing function that receives the raw linear alpha `[0, 1]` and returns a remapped alpha `[0, 1]`. When omitted, plain linear interpolation is used. You can pass any standard easing curve or a custom lambda.
+
+  ```lua
+  -- Smooth-step example
+  local function smoothStep(t)
+      return t * t * (3 - 2 * t)
+  end
+  ```
+</ParamField>
+
+## Return Value
+
+<ResponseField name="RBXScriptConnection" type="RBXScriptConnection">
+  The `RunService.Heartbeat` connection driving the interpolation. Call `:Disconnect()` on it at any time to stop the animation early. The connection is disconnected automatically when `duration` elapses.
+</ResponseField>
+
+## Example
+
+```lua
+local AnimationService = require(game.ReplicatedStorage.EZAnimation)
+
+local model   = workspace.PlayerModel
+local startCF = model:GetPivot()
+local endCF   = startCF * CFrame.new(0, 10, -20)
+
+-- Custom ease-in-out cubic
+local function easeInOutCubic(t)
+    if t < 0.5 then
+        return 4 * t * t * t
+    else
+        local s = -2 * t + 2
+        return 1 - s * s * s / 2
+    end
+end
+
+local connection = AnimationService:lerp(
+    model,
+    startCF,
+    endCF,
+    2.0,           -- 2-second duration
+    easeInOutCubic
+)
+
+-- Cancel early if a condition is met
+task.delay(1, function()
+    if someCondition then
+        connection:Disconnect()
+        print("Lerp cancelled early")
+    end
+end)
+```
+
+<Tip>
+  Because lerp uses `Heartbeat` you get sub-frame accuracy with no extra setup. The connection is garbage-collected automatically after `duration` completes — you only need to keep a reference if you plan to cancel it.
+</Tip>
+
+<Note>
+  For `BasePart` instances, lerping `CFrame` also moves and rotates the part, whereas providing a `Vector3` only translates it (orientation is untouched). Choose the value type that matches what you need.
+</Note>
+
+<Warning>
+  Lerping a `BasePart` that has `Anchored = false` while physics is active will fight the physics simulation. Either anchor the part during the lerp or use a `BodyPosition`/`AlignPosition` constraint instead.
+</Warning>

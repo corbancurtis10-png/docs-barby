@@ -1,0 +1,106 @@
+---
+title: "Fade Time: Blending Animations Smoothly in EZAnimation"
+sidebarTitle: "Fade Time"
+description: "fadeTime controls the blend duration in seconds when an animation starts or stops, letting you choose between instant cuts and smooth transitions for any situation."
+---
+
+Every animation transition in EZAnimation can be tuned with a `fadeTime` value — a number in seconds that controls how long the engine spends blending between the outgoing and incoming poses. A short fade time produces a snappy, instant-feeling cut; a longer fade time produces a silky cross-blend that feels natural for slow characters or cinematic sequences. Understanding when to use each setting will make your animations feel polished rather than robotic.
+
+## What fadeTime Controls
+
+When you call `play`, the `fadeTime` determines how long Roblox takes to **blend in** the new animation from the current rig pose. When you call `stop`, it determines how long Roblox takes to **blend out** the animation back to whatever is underneath (or to the bind pose if nothing else is playing). In both cases the value is measured in seconds.
+
+The default `fadeTime` in EZAnimation is **0.15 seconds**, which matches Roblox's own default animator behavior and works well for most general-purpose transitions.
+
+## Fade Time on play()
+
+Pass `fadeTime` as the fifth argument to `play()`:
+
+```lua
+anim:play(model, id, animType, looped, fadeTime)
+```
+
+### Instant start — `fadeTime = 0`
+
+A fade time of `0` makes the animation snap to its first frame immediately with no blending. Use this for hit reactions, impacts, teleports, or any moment where you deliberately want a hard cut.
+
+```lua
+-- Snap instantly to the hit-react pose — no blend
+anim:play(character, "hitReact", "Action2", false, 0)
+```
+
+### Smooth fade in — `fadeTime = 0.3`
+
+A longer fade time eases the character smoothly into the new animation. Use this for transitioning from an idle to a run, entering an emote, or any animation change that should feel organic.
+
+```lua
+-- Gently blend into the run cycle over 0.3 seconds
+anim:play(character, "run", "Movement", true, 0.3)
+```
+
+<Tip>
+  For locomotion cycles, a fade time between `0.2` and `0.4` seconds typically looks the most natural. For combat or reactive animations, keep it at `0` to `0.1` seconds so the response feels immediate.
+</Tip>
+
+## Fade Time on stop()
+
+Pass `fadeTime` as the third argument to `stop()`:
+
+```lua
+anim:stop(model, id, fadeTime)
+```
+
+### Instant stop — `fadeTime = 0`
+
+Stops the animation dead on the current frame with no blending. Use this when precision timing matters — for example, freezing a character in a specific pose, or cancelling an animation the moment a state changes.
+
+```lua
+-- Cut the attack animation immediately (e.g. player died mid-swing)
+anim:stop(character, "attack", 0)
+```
+
+### Gradual fade out — `fadeTime = 0.5`
+
+A longer fade-out blends the animation's current pose back into whatever is underneath. Use this when stopping a looping animation to avoid a jarring pose snap — for example, ending an idle emote and letting the character smoothly return to their locomotion pose.
+
+```lua
+-- Fade the dance emote out over half a second
+anim:stop(character, "dance", 0.5)
+```
+
+## Fade Time on stopAll()
+
+`stopAll` accepts the same `fadeTime` argument and applies it to every active track on the model simultaneously.
+
+```lua
+-- Fade out all animations at once before a cutscene
+anim:stopAll(character, 0.4)
+```
+
+## Choosing the Right fadeTime
+
+| Situation | Recommended fadeTime |
+|-----------|---------------------|
+| Hit reactions, impacts, teleports | `0` – `0.05` s |
+| Starting a combat attack | `0.05` – `0.1` s |
+| Transitioning between locomotion states | `0.2` – `0.4` s |
+| Entering or exiting an emote | `0.3` – `0.6` s |
+| Stopping a looping background animation | `0.3` – `0.5` s |
+| Cinematic or slow character movements | `0.5` – `1.0` s |
+
+## Fade Time and crossFade
+
+The `crossFade` method is a convenience wrapper that stops one animation and starts another in a single call. The `time` argument you pass to `crossFade` is used as the fade time for **both** the outgoing stop and the incoming play, so the total perceived blend is a symmetric cross-dissolve.
+
+```lua
+-- Stop "walk" and start "run", both blending over 0.25 seconds
+anim:crossFade(character, "walk", "run", 0.25)
+```
+
+<Note>
+  Because `crossFade` applies the same `time` to both the stop and the play, you get a true cross-fade: the outgoing animation fades out while the incoming animation simultaneously fades in over the same duration. If you need asymmetric blend times — for example, a quick stop but a slow start — call `stop` and `play` separately with different `fadeTime` values.
+</Note>
+
+<Warning>
+  Passing a very large `fadeTime` (for example, `5` seconds) on a short animation can produce unexpected results because the animation may finish playing before the blend is complete, leaving the rig stuck interpolating toward a pose that is no longer active. Keep fade times shorter than the animation's own duration.
+</Warning>

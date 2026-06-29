@@ -1,17 +1,11 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
+  "projectType": "sdk-library",
+  "projectName": "EZAnimation",
+  "projectDescription": "A Roblox Luau animation library that makes it easy to play, stop, queue, crossfade, tween, lerp, and ragdoll character animations on any model.",
   "theme": "luma",
-  "name": "EZAnimation",
-  "colors": {
-    "primary": "#ef7025",
-    "light": "#eec9bc",
-    "dark": "#4fa1ab"
-  },
-  "favicon": "/favicon.svg",
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
+  "primaryColor": "#ef7025",
+  "lightColor": "#eec9bc",
+  "darkColor": "#4fa1ab",
   "navigation": {
     "tabs": [
       {
@@ -101,13 +95,42 @@
       }
     ]
   },
-  "navbar": {
-    "primary": {
-      "type": "github",
-      "href": "https://github.com"
-    }
-  },
-  "footer": {
-    "socials": {}
-  }
+  "keyFeatures": [
+    "Simple init with an animation ID list",
+    "Play animations with priority and fade control",
+    "Stop individual or all animations with fade-out",
+    "Crossfade between two animations",
+    "Animation queue system for sequential playback",
+    "Named animation groups with random selection",
+    "State machine helpers (setState / getState / reset)",
+    "Marker and stopped event listeners",
+    "TweenService wrapper for property tweening",
+    "Heartbeat-based lerp for Vector3 and CFrame",
+    "Ragdoll and unragdoll with BallSocketConstraints",
+    "Automatic cleanup on model removal"
+  ],
+  "publicApiSurface": [
+    "AnimationService.init(options)",
+    "AnimationService:play(model, id, animType, looped, fadeTime)",
+    "AnimationService:stop(model, id, fadeTime)",
+    "AnimationService:stopAll(model, fadeTime)",
+    "AnimationService:crossFade(model, fromId, toId, time)",
+    "AnimationService:pause(model, id)",
+    "AnimationService:resume(model, id)",
+    "AnimationService:queue(model, id)",
+    "AnimationService:defineGroup(name, list)",
+    "AnimationService:playGroup(model, groupName)",
+    "AnimationService:setState(model, state)",
+    "AnimationService:getState(model)",
+    "AnimationService:reset(model)",
+    "AnimationService:onMarker(model, id, marker, callback)",
+    "AnimationService:onStopped(model, id, callback)",
+    "AnimationService:isPlaying(model, id)",
+    "AnimationService:getAnim(model, id)",
+    "AnimationService:tween(instance, info, goal)",
+    "AnimationService:lerp(instance, fromValue, toValue, duration, alphaFn)",
+    "AnimationService:ragdoll(model, duration)",
+    "AnimationService:unragdoll(model)",
+    "AnimationService:destroy(model)"
+  ]
 }

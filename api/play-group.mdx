@@ -1,0 +1,64 @@
+---
+title: "AnimationService:playGroup() — EZAnimation API"
+sidebarTitle: "playGroup"
+description: "Pick a random animation from a previously defined group and play it on the given model, returning the resulting AnimationTrack."
+---
+
+The `playGroup` method selects a random animation ID from a group registered with `defineGroup` and immediately plays it on the specified model. It returns the resulting `AnimationTrack`, giving you full access to the track's properties and events just as you would have from a direct `play` call. This is the primary way to introduce natural variation into repeated actions without writing selection logic yourself.
+
+<Card title="AnimationService:playGroup()" icon="dice">
+  `playGroup(model, groupName)`
+</Card>
+
+## Parameters
+
+<ParamField path="model" type="Model" required>
+  The Roblox `Model` instance on which the randomly selected animation will be played. The model must have a valid `Animator` descendant.
+</ParamField>
+
+<ParamField path="groupName" type="string" required>
+  The name of a group previously registered via `defineGroup`. This value is case-sensitive and must exactly match the name used during registration.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="AnimationTrack" type="AnimationTrack">
+  The `AnimationTrack` instance for the animation that was selected and started. You can use this to adjust `Speed`, `WeightCurrent`, connect to `.Stopped`, or call `:Stop()` directly.
+</ResponseField>
+
+## Code Example
+
+```lua
+local AnimationService = require(game.ReplicatedStorage.EZAnimation)
+
+-- Register the group once (e.g. at game startup)
+AnimationService:defineGroup("hit_reactions", {
+    "hit_light",
+    "hit_heavy",
+    "hit_stagger",
+})
+
+-- Each time the character is damaged, play a random reaction
+local function onDamaged(character)
+    local track = AnimationService:playGroup(character, "hit_reactions")
+
+    -- Slow the selected animation down slightly
+    track.Speed = 0.85
+
+    track.Stopped:Connect(function()
+        print("Hit reaction finished")
+    end)
+end
+```
+
+<Note>
+  The selection is uniformly random across all entries in the group's array. If you need certain animations to appear more often, add their key multiple times when calling `defineGroup`.
+</Note>
+
+<Warning>
+  Calling `playGroup` with a `groupName` that has not been registered with `defineGroup` will throw a runtime error. Always call `defineGroup` before `playGroup`.
+</Warning>
+
+<Tip>
+  Store the returned `AnimationTrack` if you need to stop the animation early or read its `Length`. If you don't need the track reference, you can safely discard the return value.
+</Tip>

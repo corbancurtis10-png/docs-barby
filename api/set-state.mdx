@@ -1,0 +1,62 @@
+---
+title: "AnimationService:setState() — EZAnimation API"
+sidebarTitle: "setState"
+description: "Store an arbitrary state value against a model so animation logic can branch on it later using getState()."
+---
+
+The `setState` method attaches any value you choose to a model inside `AnimationService`'s internal registry. This gives you a lightweight, centralised way to track the current animation-relevant state of a model — such as `"idle"`, `"combat"`, or a custom enum — without maintaining a separate data structure yourself. Retrieve the value at any time with `getState`.
+
+<Card title="AnimationService:setState()" icon="tag">
+  `setState(model, state)`
+</Card>
+
+## Parameters
+
+<ParamField path="model" type="Model" required>
+  The Roblox `Model` instance to associate the state value with. This is the same model reference you pass to other `AnimationService` methods.
+</ParamField>
+
+<ParamField path="state" type="any" required>
+  The value to store. This can be any Luau type — a string, number, boolean, table, or enum value. Passing `nil` is equivalent to clearing the stored state for that model.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="void" type="nil">
+  This method does not return a value. The state is stored internally and can be retrieved with `getState`.
+</ResponseField>
+
+## Code Example
+
+```lua
+local AnimationService = require(game.ReplicatedStorage.EZAnimation)
+
+-- Transition a character into a combat state
+local function enterCombat(character)
+    AnimationService:setState(character, "combat")
+    AnimationService:play(character, "combat_idle")
+end
+
+-- Use the stored state elsewhere to decide which animation to play
+local function handleJump(character)
+    local currentState = AnimationService:getState(character)
+
+    if currentState == "combat" then
+        AnimationService:play(character, "combat_jump")
+    else
+        AnimationService:play(character, "jump")
+    end
+end
+```
+
+<Note>
+  State is stored per-model. Updating the state for one model has no effect on any other model, even if they share the same animations.
+</Note>
+
+<Tip>
+  Using string constants or a shared enum module for state values makes it easier to keep `setState` and `getState` calls in sync across multiple scripts. Avoid magic strings scattered throughout your codebase.
+</Tip>
+
+<Warning>
+  Calling `reset` on a model will clear its stored state. If you rely on state surviving a full animation reset, you will need to call `setState` again afterwards.
+</Warning>

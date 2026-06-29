@@ -1,0 +1,111 @@
+---
+title: "Animation List: Defining Your Animations in EZAnimation"
+sidebarTitle: "Animation List"
+description: "The Animation List maps string keys to Roblox asset IDs, forming the central registry that every EZAnimation method uses to look up and load tracks."
+---
+
+The Animation List is a Lua table you pass to `AnimationService.init()` under the `List` key. It acts as your project's central animation registry — every string ID you use in calls to `play`, `stop`, `queue`, `crossFade`, and other methods must correspond to a key in this table. Getting the list right at the start keeps your animation code consistent and prevents runtime errors caused by mismatched IDs.
+
+## Structure of the List Table
+
+Each entry in the `List` table follows a simple pattern:
+
+- **Key** — a plain string you choose, used as the animation's identifier throughout your code.
+- **Value** — the Roblox asset ID string in `rbxassetid://` format pointing to the uploaded animation.
+
+```lua
+local anim = AnimationService.init({
+    List = {
+        idle        = "rbxassetid://1234567890",
+        walk        = "rbxassetid://2345678901",
+        run         = "rbxassetid://3456789012",
+        jump        = "rbxassetid://4567890123",
+        attack      = "rbxassetid://5678901234",
+        attackCombo = "rbxassetid://6789012345",
+        death       = "rbxassetid://7890123456",
+    }
+})
+```
+
+After initialization, EZAnimation holds a reference to this list and uses it whenever you reference an animation by its string key.
+
+## Using List Keys in Method Calls
+
+Every EZAnimation method that operates on a specific animation accepts the string key you defined in the list as its `id` parameter. The key must match exactly — EZAnimation performs a direct table lookup.
+
+```lua
+-- Play the animation registered under the key "attack"
+anim:play(character, "attack", "Action", false, 0.1)
+
+-- Stop the same animation
+anim:stop(character, "attack", 0.2)
+
+-- Queue a follow-up animation
+anim:queue(character, "attackCombo")
+
+-- Check whether the animation is currently playing
+if anim:isPlaying(character, "attack") then
+    print("Attack animation is active")
+end
+```
+
+<Warning>
+  If you pass an ID string that does not exist in your `List`, EZAnimation will not find the corresponding asset and the method call will silently do nothing or error depending on the method. Always make sure your keys match exactly, including capitalization.
+</Warning>
+
+## A Realistic Animation List
+
+For a typical action game character you might organize your list like this:
+
+```lua
+local anim = AnimationService.init({
+    List = {
+        -- Locomotion
+        idle         = "rbxassetid://1000000001",
+        walk         = "rbxassetid://1000000002",
+        run          = "rbxassetid://1000000003",
+        sprint       = "rbxassetid://1000000004",
+        jump         = "rbxassetid://1000000005",
+        fall         = "rbxassetid://1000000006",
+        land         = "rbxassetid://1000000007",
+
+        -- Combat
+        punch1       = "rbxassetid://2000000001",
+        punch2       = "rbxassetid://2000000002",
+        kick         = "rbxassetid://2000000003",
+        block        = "rbxassetid://2000000004",
+        hitReact     = "rbxassetid://2000000005",
+
+        -- Emotes
+        wave         = "rbxassetid://3000000001",
+        dance        = "rbxassetid://3000000002",
+    }
+})
+```
+
+<Tip>
+  Use a naming convention and group related animations together with comments. This makes it far easier to scan the list as your project grows. Prefixes like `"combat_"`, `"loco_"`, or `"emote_"` can help in very large projects, though any consistent scheme works.
+</Tip>
+
+## Updating the List After Init
+
+The `List` is set once during `init()`. If you need different animation sets for different characters (for example, a player character and an NPC), create a separate `AnimationService` instance for each by calling `init()` again with a different list:
+
+```lua
+local playerAnim = AnimationService.init({
+    List = {
+        idle   = "rbxassetid://1111111111",
+        run    = "rbxassetid://2222222222",
+    }
+})
+
+local npcAnim = AnimationService.init({
+    List = {
+        idle   = "rbxassetid://3333333333",
+        patrol = "rbxassetid://4444444444",
+        alert  = "rbxassetid://5555555555",
+    }
+})
+```
+
+Each instance maintains its own track cache, animator references, and state, so the two will never interfere with each other.

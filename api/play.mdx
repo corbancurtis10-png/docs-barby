@@ -1,0 +1,90 @@
+---
+title: "Play an Animation on a Character Rig"
+sidebarTitle: "play"
+description: "Load and play a named animation on any Model that has a Humanoid and Animator. Returns the live AnimationTrack for further control."
+---
+
+The `play` method looks up an animation by its string key from the list you provided to `init`, loads it onto the target model's `Animator`, and starts playback immediately. You can control the animation priority, whether it loops, and how smoothly it blends in with a custom fade time. If the same animation is already playing on that model, `play` returns the existing `AnimationTrack` without restarting it — so it is safe to call frequently without causing stutters or duplicates.
+
+<Card title="AnimationService:play()" icon="play">
+  `play(model, id, animType, looped, fadeTime) → AnimationTrack`
+</Card>
+
+## Parameters
+
+<ParamField body="model" type="Model" required>
+  The character or rig you want to animate. It must contain a `Humanoid` and an `Animator` instance nested inside that `Humanoid`. Standard Roblox player characters satisfy this automatically.
+</ParamField>
+
+<ParamField body="id" type="string" required>
+  The key of the animation to play. Must match a key in the `List` table you passed to `init`. Keys are case-sensitive.
+</ParamField>
+
+<ParamField body="animType" type="string" default="Movement">
+  The animation priority, controlling which animation wins when multiple are playing simultaneously. Accepted values match Roblox's `Enum.AnimationPriority`:
+
+  | Value | Priority |
+  |-------|----------|
+  | `"Idle"` | Lowest |
+  | `"Movement"` | Default |
+  | `"Action"` | High |
+  | `"Action2"` | Higher |
+  | `"Action3"` | Even higher |
+  | `"Action4"` | Highest |
+</ParamField>
+
+<ParamField body="looped" type="boolean" default="false">
+  When `true`, the animation repeats indefinitely until you call `stop`, `stopAll`, or `crossFade`. When `false`, the track plays once and stops automatically.
+</ParamField>
+
+<ParamField body="fadeTime" type="number" default="0.15">
+  Blend-in duration in seconds. The new animation fades up from zero weight over this period, smoothly overlapping any currently playing animations.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="AnimationTrack" type="AnimationTrack">
+  The Roblox `AnimationTrack` instance for this animation on the given model. You can use it to listen to events like `Stopped` or `KeyframeReached`, adjust speed with `AdjustSpeed`, or inspect `IsPlaying`.
+</ResponseField>
+
+## Example
+
+```lua icon="play"
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players           = game:GetService("Players")
+local EZAnimation       = require(ReplicatedStorage.EZAnimation)
+
+local AnimService = EZAnimation.init({
+    List = {
+        Idle   = "rbxassetid://1234567890",
+        Run    = "rbxassetid://1234567891",
+        Attack = "rbxassetid://1234567892",
+    },
+})
+
+local player    = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+-- Play a looping idle animation at the lowest priority
+local idleTrack = AnimService:play(character, "Idle", "Idle", true, 0.3)
+
+-- Play a one-shot attack animation at high priority
+local attackTrack = AnimService:play(character, "Attack", "Action", false, 0.1)
+
+-- Listen for the attack to finish
+attackTrack.Stopped:Connect(function()
+    print("Attack animation finished!")
+end)
+```
+
+<Note>
+  If the animation identified by `id` is **already playing** on `model`, `play` returns the existing `AnimationTrack` without restarting it. To force a restart, call `stop` first and then `play` again.
+</Note>
+
+<Tip>
+  Use a higher `animType` priority (e.g. `"Action"`) for combat or interaction animations so they visually override locomotion animations without you needing to stop them first.
+</Tip>
+
+<Warning>
+  `id` must exactly match a key in the `List` provided to `init`. Passing an unrecognised key will cause a runtime error. Double-check casing — `"idle"` and `"Idle"` are treated as different keys.
+</Warning>

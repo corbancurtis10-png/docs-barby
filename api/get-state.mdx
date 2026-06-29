@@ -1,0 +1,57 @@
+---
+title: "AnimationService:getState() — EZAnimation API"
+sidebarTitle: "getState"
+description: "Retrieve the current state value stored for a model, or nil if no state has been set yet via setState()."
+---
+
+The `getState` method returns whatever value was most recently stored for the given model via `setState`. If no state has ever been assigned — or if the model's state was cleared by a `reset` call — the method returns `nil`. Use this in your animation logic to branch behaviour based on the model's current state without maintaining a separate lookup table.
+
+<Card title="AnimationService:getState()" icon="magnifying-glass">
+  `getState(model)`
+</Card>
+
+## Parameters
+
+<ParamField path="model" type="Model" required>
+  The Roblox `Model` instance whose stored state you want to retrieve. This must be the same reference used when `setState` was called.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="state" type="any">
+  The value previously stored by `setState`, or `nil` if no state has been set. The type matches whatever was passed to `setState` — it is returned exactly as stored without any transformation.
+</ResponseField>
+
+## Code Example
+
+```lua
+local AnimationService = require(game.ReplicatedStorage.EZAnimation)
+
+-- Set initial state
+AnimationService:setState(character, "idle")
+
+-- Retrieve and branch on state
+local function onActionInput(character, action)
+    local state = AnimationService:getState(character)
+
+    if state == "idle" and action == "attack" then
+        AnimationService:setState(character, "attacking")
+        AnimationService:play(character, "attack_start")
+
+    elseif state == "attacking" and action == "attack" then
+        -- Already mid-attack — queue a follow-up instead
+        AnimationService:queue(character, "attack_combo")
+
+    else
+        print("Action not valid in state:", state)
+    end
+end
+```
+
+<Note>
+  `getState` returns `nil` both when a state has never been set **and** when `setState` was explicitly called with `nil`. If you need to distinguish between these two cases, use a sentinel value such as `"unset"` for the initial state.
+</Note>
+
+<Tip>
+  Pair `getState` with `setState` to build a simple finite state machine for your character's animation logic. Keeping state inside `AnimationService` means it's automatically cleaned up when `reset` is called.
+</Tip>

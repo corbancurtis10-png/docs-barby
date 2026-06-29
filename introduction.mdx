@@ -1,0 +1,80 @@
+---
+title: "EZAnimation: Roblox Luau Animation Module"
+sidebarTitle: "Introduction"
+description: "EZAnimation is a Roblox Luau ModuleScript that simplifies character and object animation with a clean, unified API for playback, blending, and state management."
+---
+
+EZAnimation is a Roblox Luau ModuleScript that takes the complexity out of working with the Roblox `AnimationController` and `Animator` APIs. Instead of wiring up tracks, managing priorities, and handling cleanup manually, you initialize a single service, pass it your animation IDs, and call straightforward methods like `play`, `stop`, `crossFade`, and `queue` — all without touching the underlying Roblox animation plumbing.
+
+## Why EZAnimation?
+
+Roblox's built-in animation system requires you to load each `Animation` instance onto an `Animator`, store the returned `AnimationTrack`, manage its lifecycle, and remember to disconnect events when you're done. On any project with more than a handful of animations this becomes tedious and error-prone. EZAnimation solves these problems by:
+
+- **Centralizing your animation library** — define all your asset IDs in one place at initialization.
+- **Abstracting track management** — the service loads, caches, and cleans up tracks for you.
+- **Providing higher-level primitives** — queuing, cross-fading, grouping, state machines, ragdoll, and tween helpers ship out of the box.
+- **Keeping the API consistent** — every method accepts the same `model` and string `id` pattern, so there's nothing new to learn as your project grows.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Playback Controls" icon="play">
+    Play, stop, pause, and resume animations with optional fade times on any model that has an `Animator`.
+  </Card>
+  <Card title="Cross-Fading" icon="shuffle">
+    Smoothly blend from one animation to another using `crossFade`, eliminating jarring cut transitions.
+  </Card>
+  <Card title="Animation Queuing" icon="list-ol">
+    Line up animations to play back-to-back with `queue`, perfect for combo attacks or cutscene sequences.
+  </Card>
+  <Card title="Group Playback" icon="layer-group">
+    Define named groups of animations with `defineGroup` and trigger the whole set in a single `playGroup` call.
+  </Card>
+  <Card title="State Management" icon="diagram-project">
+    Attach arbitrary state to any model with `setState` and `getState` to drive animation logic from your game code.
+  </Card>
+  <Card title="Event Hooks" icon="bell">
+    React to animation markers and stop events using `onMarker` and `onStopped` callbacks without manual track wiring.
+  </Card>
+  <Card title="Ragdoll System" icon="person-falling">
+    Enable and disable ragdoll physics on a model for a timed duration with `ragdoll` and `unragdoll`.
+  </Card>
+  <Card title="Tween & Lerp Helpers" icon="wand-magic-sparkles">
+    Drive non-animation property changes with the built-in `tween` and `lerp` utility methods, powered by TweenService.
+  </Card>
+</CardGroup>
+
+## How It Works
+
+EZAnimation ships as a single Roblox **ModuleScript**. You place it in `ReplicatedStorage` (or any other location accessible to your scripts), `require` it, and call `AnimationService.init()` with a table mapping string keys to `rbxassetid://` strings. From that point on, every method call references your animations by those string keys — no `Instance.new("Animation")` boilerplate required.
+
+```lua
+local AnimationService = require(game.ReplicatedStorage.EZAnimation)
+
+local anim = AnimationService.init({
+    List = {
+        idle    = "rbxassetid://1234567890",
+        run     = "rbxassetid://0987654321",
+        attack  = "rbxassetid://1122334455",
+    }
+})
+
+anim:play(character, "idle", "Idle", true)
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get EZAnimation installed and play your first animation in under five minutes.
+  </Card>
+  <Card title="Animation List" icon="book-open" href="/concepts/animation-list">
+    Learn how to structure the `List` table you pass to `init()`.
+  </Card>
+  <Card title="Priorities" icon="arrow-up-wide-short" href="/concepts/priorities">
+    Understand how `animType` maps to Roblox `AnimationPriority` levels.
+  </Card>
+  <Card title="Fade Time" icon="clock" href="/concepts/fade-time">
+    Control how smoothly animations blend in and out using `fadeTime`.
+  </Card>
+</CardGroup>

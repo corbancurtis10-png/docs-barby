@@ -1,0 +1,70 @@
+---
+title: "AnimationService:destroy() — Clean Up Animation Data"
+sidebarTitle: "destroy"
+description: "Release all animation tracks, RunService connections, and internal cache entries associated with a Model to prevent memory leaks when a character is removed."
+---
+
+`AnimationService:destroy()` is the cleanup companion for every other method in EZAnimation. When you are finished with a model — whether it has left the game, been removed from the workspace, or simply no longer needs animation — call `destroy()` to release all internally tracked animation data for it. This stops any active `lerp()` connections, cancels cached tweens, and clears all stored state so nothing lingers in memory.
+
+<Card title="AnimationService:destroy()" icon="trash">
+  `destroy(model) → void`
+</Card>
+
+## Parameters
+
+<ParamField path="model" type="Model" required>
+  The `Model` whose animation state you want to clean up. After this call, EZAnimation holds no references to the model or any of its descendants — it is safe to then call `model:Destroy()` or let it be garbage-collected.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="void" type="void">
+  This method does not return a value.
+</ResponseField>
+
+## Example
+
+```lua
+local AnimationService = require(game.ReplicatedStorage.EZAnimation)
+
+game.Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        -- Start some animations...
+        local connection = AnimationService:lerp(
+            character.PrimaryPart,
+            character.PrimaryPart.CFrame,
+            character.PrimaryPart.CFrame * CFrame.new(0, 5, 0),
+            1.5
+        )
+
+        -- Clean up when the character is removed
+        character.AncestryChanged:Connect(function(_, parent)
+            if not parent then
+                AnimationService:destroy(character)
+                print("Animation data cleaned up for", player.Name)
+            end
+        end)
+    end)
+end)
+```
+
+```lua
+-- You can also hook into Players.PlayerRemoving for server-side cleanup
+game.Players.PlayerRemoving:Connect(function(player)
+    if player.Character then
+        AnimationService:destroy(player.Character)
+    end
+end)
+```
+
+<Warning>
+  Failing to call `destroy()` when a model leaves the game will cause EZAnimation to hold strong references to the model and its parts, preventing Lua garbage collection. In games with frequent character respawns this will result in a memory leak over time.
+</Warning>
+
+<Note>
+  `destroy()` only removes EZAnimation's internal tracking data — it does **not** call `Instance:Destroy()` on the model itself. You remain in full control of the model's lifetime.
+</Note>
+
+<Tip>
+  The safest pattern is to always pair `destroy()` with the model's removal event. Connecting to `character.AncestryChanged` or `Players.PlayerRemoving` ensures cleanup happens even when the character leaves unexpectedly (e.g. a server crash recovery or forced respawn).
+</Tip>

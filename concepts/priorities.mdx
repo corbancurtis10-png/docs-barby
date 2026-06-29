@@ -1,0 +1,113 @@
+---
+title: "Animation Priorities: Controlling Playback Order in EZAnimation"
+sidebarTitle: "Priorities"
+description: "EZAnimation maps the animType string to Roblox AnimationPriority levels so higher-priority animations always override lower-priority ones on the same rig."
+---
+
+Roblox's animation system uses a priority system to decide which animation wins when multiple tracks are playing at the same time on the same rig. EZAnimation exposes this system through the `animType` string parameter on the `play` method, translating human-readable names into the corresponding `Enum.AnimationPriority` values for you. Understanding priorities is essential for making sure your combat animations override locomotion, your idle animations stay in the background, and nothing unexpected bleeds through.
+
+## How Priorities Work in Roblox
+
+When two `AnimationTrack` objects play concurrently, Roblox blends the bones from both tracks together. If they target the same joints, the track with the **higher priority** takes full control of those joints — the lower-priority track's influence on those joints is suppressed. This means you can safely play a looping walk cycle at `Movement` priority while a punching animation at `Action` priority plays simultaneously; the punch will override the upper body without you having to author a masked animation.
+
+## The EZAnimation Priority Map
+
+EZAnimation defines six named priority levels that map directly to the six `Enum.AnimationPriority` values:
+
+| `animType` string | Roblox Enum | Relative Level |
+|-------------------|-------------|---------------|
+| `"Idle"` | `Enum.AnimationPriority.Idle` | Lowest |
+| `"Movement"` | `Enum.AnimationPriority.Movement` | Low |
+| `"Action"` | `Enum.AnimationPriority.Action` | Medium |
+| `"Action2"` | `Enum.AnimationPriority.Action2` | Medium-High |
+| `"Action3"` | `Enum.AnimationPriority.Action3` | High |
+| `"Action4"` | `Enum.AnimationPriority.Action4` | Highest |
+
+Internally, EZAnimation resolves the string through the following map before loading the track:
+
+```lua
+local PriorityMap = {
+    Idle     = Enum.AnimationPriority.Idle,
+    Movement = Enum.AnimationPriority.Movement,
+    Action   = Enum.AnimationPriority.Action,
+    Action2  = Enum.AnimationPriority.Action2,
+    Action3  = Enum.AnimationPriority.Action3,
+    Action4  = Enum.AnimationPriority.Action4,
+}
+```
+
+## Default Priority
+
+If you omit the `animType` argument when calling `play`, EZAnimation defaults to `"Movement"`. This is appropriate for most locomotion animations like walking or running.
+
+```lua
+-- Explicitly passing "Movement"
+anim:play(character, "run", "Movement", true)
+
+-- Equivalent — "Movement" is used when animType is nil or omitted
+anim:play(character, "run", nil, true)
+```
+
+## Choosing the Right Priority
+
+<Tabs>
+  <Tab title="Idle">
+    Use `"Idle"` for ambient animations that should only be visible when nothing else is playing — breathing, looking-around cycles, or passive tool-hold poses.
+
+    ```lua
+    anim:play(character, "breathe", "Idle", true, 0.3)
+    ```
+
+    Any movement or action animation will immediately take over the affected joints, so the idle animation serves as a seamless fallback.
+  </Tab>
+  <Tab title="Movement">
+    Use `"Movement"` for all locomotion: walking, running, swimming, climbing. This is the default priority and is designed to override idle animations automatically.
+
+    ```lua
+    anim:play(character, "run", "Movement", true, 0.2)
+    ```
+  </Tab>
+  <Tab title="Action">
+    Use `"Action"` for primary gameplay interactions: basic attacks, item use, emotes that should override locomotion.
+
+    ```lua
+    anim:play(character, "punch", "Action", false, 0.1)
+    ```
+  </Tab>
+  <Tab title="Action2 / Action3 / Action4">
+    Use these higher levels for animations that must override standard actions. Common use cases include cinematic hit reactions (`Action2`), stagger animations (`Action3`), and death or knockback sequences that must play over everything else (`Action4`).
+
+    ```lua
+    -- A death animation that overrides all other playing animations
+    anim:play(character, "death", "Action4", false, 0.05)
+    ```
+  </Tab>
+</Tabs>
+
+## Priority in Practice
+
+The example below shows a typical layered setup: an idle animation plays at the lowest priority, a run animation overrides it during movement, and an attack animation cuts across both.
+
+```lua
+-- Background idle — visible only when nothing else is active on those joints
+anim:play(character, "idle", "Idle", true, 0.3)
+
+-- Player starts running — overrides idle on the whole rig
+anim:play(character, "run", "Movement", true, 0.2)
+
+-- Player attacks — overrides run on any shared joints for the duration
+anim:play(character, "punch", "Action", false, 0.1)
+
+-- When punch finishes, run animation is still playing underneath
+anim:onStopped(character, "punch", function()
+    print("Punch finished — run resumes on all joints")
+end)
+```
+
+<Note>
+  Priority determines which animation *wins on shared joints*, not which animation plays exclusively. Both tracks remain active on the `Animator`; Roblox simply gives full joint control to the higher-priority track for the joints they share.
+</Note>
+
+<Warning>
+  Passing an unrecognized `animType` string (for example, a typo like `"action"` instead of `"Action"`) will cause the priority lookup to return `nil`. Always match the casing exactly as shown in the priority map above.
+</Warning>

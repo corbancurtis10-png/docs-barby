@@ -1,0 +1,124 @@
+---
+title: "Ragdoll Physics with EZAnimation"
+sidebarTitle: "Ragdoll"
+description: "Enable and disable physics-based ragdoll on any Roblox character using EZAnimation's ragdoll() and unragdoll() methods."
+---
+
+EZAnimation's ragdoll system lets you switch any Humanoid character from animation-driven movement to physics-driven collapse in a single call. When you call `ragdoll()`, EZAnimation disables the character's `Motor6D` joints and replaces them with `BallSocketConstraints`, allowing gravity and collisions to take over. Calling `unragdoll()` reverses the process — constraints are removed, joints are re-enabled, and the `Humanoid` is restored to full control.
+
+## Method Signatures
+
+<ParamField path="model" type="Instance" required>
+  The character model containing a `Humanoid` and `Motor6D` joints.
+</ParamField>
+
+<ParamField path="duration" type="number">
+  Optional. If provided, EZAnimation automatically calls `unragdoll()` after this many seconds. Omit it to manage recovery manually.
+</ParamField>
+
+## What Happens Internally
+
+You do not need to manage joints or constraints yourself — EZAnimation handles it all. From your perspective, the sequence is:
+
+<Steps>
+  <Step title="ragdoll() is called">
+    All `Motor6D` joints in the model are disabled, unlocking each body part from animation control.
+  </Step>
+  <Step title="Physics takes over">
+    `BallSocketConstraints` are added between the now-free parts, letting the character collapse, tumble, and interact with the environment physically.
+  </Step>
+  <Step title="unragdoll() is called (manually or automatically)">
+    Constraints are removed, `Motor6D` joints are re-enabled, and the `Humanoid` state is restored so animations can drive the character again.
+  </Step>
+</Steps>
+
+## Example: Death Ragdoll with Auto-Recovery
+
+The most common use case is ragdolling a character on death for a set duration and then recovering them automatically.
+
+```lua
+local EZAnim = require(game.ReplicatedStorage.EZAnim)
+
+local AnimService = EZAnim.init({
+    List = {
+        GetUp = "rbxassetid://1234500001",
+    }
+})
+
+character.Humanoid.Died:Connect(function()
+    -- Stop all animations so they don't fight the physics simulation
+    AnimService:stopAll(character, 0)
+
+    -- Ragdoll for 3 seconds, then auto-recover
+    AnimService:ragdoll(character, 3)
+end)
+```
+
+<Info>
+  **Ragdoll in action:** The character's joints are released and the body collapses naturally under gravity, tumbling and sliding across the ground in response to physics forces.
+</Info>
+
+## Manual Recovery
+
+Omit the `duration` argument to control recovery yourself. This is useful when recovery should be triggered by a game event (getting back up, being revived, etc.) rather than a fixed timer.
+
+```lua
+-- Ragdoll with no auto-recovery
+AnimService:ragdoll(character)
+
+-- Later — player presses a button, or a teammate revives them
+local function onRevive()
+    AnimService:unragdoll(character)
+    -- Play a get-up animation after restoring joints (must be in your List)
+    AnimService:play(character, "GetUp", "Action", false, 0.2)
+end
+```
+
+## Combining with State
+
+Using the state system alongside ragdoll prevents other systems from trying to play animations or issue commands while the character is ragdolled.
+
+```lua
+character.Humanoid.Died:Connect(function()
+    AnimService:setState(character, "Ragdolled")
+    AnimService:stopAll(character, 0)
+    AnimService:ragdoll(character, 4)
+end)
+
+local function tryPlayEmote(animId)
+    -- Guard: do nothing if the character is currently ragdolled
+    if AnimService:getState(character) == "Ragdolled" then
+        return
+    end
+    AnimService:play(character, animId, "Action", false, 0.2)
+end
+```
+
+<Tip>
+  Always call `stopAll()` before `ragdoll()`. If an animation is still driving the joints when ragdoll is activated, the animation and the physics simulation will fight each other, producing jittery or unexpected results.
+</Tip>
+
+<Warning>
+  Do not call `ragdoll()` on a model that does not contain a `Humanoid` and properly parented `Motor6D` joints. EZAnimation expects a standard Roblox character rig. Non-standard rigs may not respond correctly.
+</Warning>
+
+## Cleaning Up
+
+When you are completely done with a model — for example, when a character is removed from the game — call `destroy()` to release all cached tracks, connections, and internal state that EZAnimation is holding for that model.
+
+```lua
+character.AncestryChanged:Connect(function(_, newParent)
+    if newParent == nil then
+        AnimService:destroy(character)
+    end
+end)
+```
+
+<CardGroup cols={2}>
+  <Card title="Stop Animations" icon="stop" href="/guides/stop-animations">
+    Stop individual or all animations before entering ragdoll.
+  </Card>
+  <Card title="State" icon="database" href="/guides/state">
+    Use state to block other systems while a character is ragdolled.
+  </Card>
+</CardGroup>

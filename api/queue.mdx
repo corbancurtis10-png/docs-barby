@@ -1,0 +1,48 @@
+---
+title: "AnimationService:queue() — EZAnimation API"
+sidebarTitle: "queue"
+description: "Add an animation to a model's playback queue so it runs automatically after the current non-looped animation finishes."
+---
+
+The `queue` method lets you schedule an animation to play immediately after the model's current non-looped animation completes. Queued animations are played in the order they are added, giving you a simple way to chain sequences of animations without manually listening for stop events.
+
+<Card title="AnimationService:queue()" icon="list-ol">
+  `queue(model, id)`
+</Card>
+
+## Parameters
+
+<ParamField path="model" type="Model" required>
+  The Roblox `Model` instance whose animator will receive the queued animation. The model must already have an `Animator` descendant (typically inside a `Humanoid`).
+</ParamField>
+
+<ParamField path="id" type="string" required>
+  The animation ID key to queue. This must match a key that has been registered with `AnimationService` — it is **not** a raw Roblox asset ID.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="void" type="nil">
+  This method does not return a value. The animation will begin playing automatically once the current track ends.
+</ResponseField>
+
+## Code Example
+
+```lua
+local AnimationService = require(game.ReplicatedStorage.EZAnimation)
+
+-- Play an intro animation, then queue a follow-up
+AnimationService:play(character, "attack_windup")
+AnimationService:queue(character, "attack_swing")
+AnimationService:queue(character, "attack_recovery")
+
+-- The three animations will play back-to-back in order
+```
+
+<Note>
+  `queue` only triggers after a **non-looped** animation finishes. If the currently playing animation is looped, the queued animation will never start automatically. Stop the looped animation first with `AnimationService:stop()`.
+</Note>
+
+<Tip>
+  Chain several `queue` calls in a row to build a multi-step animation sequence — for example, a combo attack that flows from windup → swing → recovery without any gaps.
+</Tip>

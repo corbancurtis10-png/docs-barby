@@ -1,0 +1,68 @@
+---
+title: "Stop All Animations on a Character Rig"
+sidebarTitle: "stopAll"
+description: "Immediately halt every playing animation on a model with a single call. Accepts an optional fade duration to blend all tracks out smoothly."
+---
+
+The `stopAll` method is the fastest way to bring a rig to a complete animation standstill. Rather than stopping tracks one by one, you pass in the model and an optional fade time and EZAnimation handles the rest — every active `AnimationTrack` on the model's `Animator` is stopped with the same blend-out duration. This is particularly useful on character death, respawn, cutscene transitions, or any moment where you need a guaranteed clean slate before starting new animations.
+
+<Card title="AnimationService:stopAll()" icon="circle-stop">
+  `stopAll(model, fadeTime)`
+</Card>
+
+## Parameters
+
+<ParamField body="model" type="Model" required>
+  The character or rig to clear. Must contain a `Humanoid` with an `Animator`. All currently playing tracks on its `Animator` will be stopped.
+</ParamField>
+
+<ParamField body="fadeTime" type="number" default="0.15">
+  Blend-out duration in seconds applied uniformly to every playing track. Pass `0` for an instant stop with no blending.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="nil" type="nil">
+  `stopAll` does not return a value.
+</ResponseField>
+
+## Example
+
+```lua icon="circle-stop"
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players           = game:GetService("Players")
+local EZAnimation       = require(ReplicatedStorage.EZAnimation)
+
+local AnimService = EZAnimation.init({
+    List = {
+        Idle   = "rbxassetid://1234567890",
+        Run    = "rbxassetid://1234567891",
+        Attack = "rbxassetid://1234567892",
+    },
+})
+
+local player    = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+-- Start several animations at once
+AnimService:play(character, "Idle",   "Idle",     true)
+AnimService:play(character, "Attack", "Action",   false)
+
+-- On death, stop everything with a slow fade for a dramatic effect
+local humanoid = character:FindFirstChildOfClass("Humanoid")
+humanoid.Died:Connect(function()
+    AnimService:stopAll(character, 0.6)
+end)
+```
+
+<Note>
+  `stopAll` is functionally equivalent to calling `stop(model, nil, fadeTime)`. Both code paths stop every animation on the model. Use whichever reads more clearly in context.
+</Note>
+
+<Tip>
+  When respawning a character, call `stopAll` with `fadeTime = 0` just before you apply a new character model. This prevents ghost tracks from lingering on the old rig's `Animator`.
+</Tip>
+
+<Warning>
+  All tracks are stopped with the **same** `fadeTime`. If different animations need different blend-out durations, call `stop` individually for each track instead.
+</Warning>

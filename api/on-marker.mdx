@@ -1,0 +1,71 @@
+---
+title: "AnimationService:onMarker() — EZAnimation API"
+sidebarTitle: "onMarker"
+description: "Register a callback that fires whenever a named animation marker is reached on the specified model and animation ID."
+---
+
+The `onMarker` method connects a callback function to a specific named marker within an animation. Animation markers are keyframe annotations you add in Roblox Studio's Animation Editor; they let you synchronise game logic — such as spawning hit-boxes, playing sound effects, or triggering particle effects — precisely with a point in the animation timeline. The method returns an `RBXScriptConnection` that you can disconnect when the callback is no longer needed.
+
+<Card title="AnimationService:onMarker()" icon="flag">
+  `onMarker(model, id, marker, callback)`
+</Card>
+
+## Parameters
+
+<ParamField path="model" type="Model" required>
+  The Roblox `Model` instance on which the animation is playing.
+</ParamField>
+
+<ParamField path="id" type="string" required>
+  The animation ID key whose marker you want to listen for. This must match the key used when the animation was registered with `AnimationService`.
+</ParamField>
+
+<ParamField path="marker" type="string" required>
+  The exact name of the animation marker as set in the Animation Editor. Marker names are case-sensitive.
+</ParamField>
+
+<ParamField path="callback" type="function" required>
+  The function to call each time the marker is reached. The callback receives the marker's `value` string as its first argument (the optional per-marker metadata set in the Animation Editor), or an empty string if no value was set.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="RBXScriptConnection" type="RBXScriptConnection">
+  A connection object. Call `:Disconnect()` on it when you no longer want the callback to fire — for example, after the animation sequence is complete or when the character is removed.
+</ResponseField>
+
+## Code Example
+
+```lua
+local AnimationService = require(game.ReplicatedStorage.EZAnimation)
+
+-- Play a sword swing and react to the "HitFrame" marker
+AnimationService:play(character, "sword_swing")
+
+local connection = AnimationService:onMarker(character, "sword_swing", "HitFrame", function(value)
+    print("Hit frame reached! Marker value:", value)
+
+    -- Create a hit-box at the sword's position
+    local sword = character:FindFirstChild("Sword")
+    if sword then
+        spawnHitbox(sword.Handle.Position)
+    end
+end)
+
+-- Clean up the connection when the animation stops
+AnimationService:onStopped(character, "sword_swing", function()
+    connection:Disconnect()
+end)
+```
+
+<Note>
+  The callback will fire **every time** the marker is passed, including on looped animations where the timeline wraps around. Make sure your callback logic is idempotent or that you disconnect the connection after the first trigger if one-shot behaviour is required.
+</Note>
+
+<Tip>
+  Use marker values (the optional string set per-marker in the Animation Editor) to pass lightweight data to your callback — for example, the name of a sound to play or the damage amount for a hit.
+</Tip>
+
+<Warning>
+  If the animation is not currently playing when `onMarker` is called, the connection is still created and will fire the next time the animation plays and reaches that marker. This means connecting before calling `play` is safe and recommended.
+</Warning>

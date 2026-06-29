@@ -1,0 +1,67 @@
+---
+title: "AnimationService:getAnim() — EZAnimation API"
+sidebarTitle: "getAnim"
+description: "Retrieve the AnimationTrack instance for a given animation ID on a model, or nil if no track exists yet."
+---
+
+The `getAnim` method returns the `AnimationTrack` that `AnimationService` has loaded for a specific animation ID on a model. Having direct access to the track lets you read low-level properties such as `Length`, `Speed`, and `WeightCurrent`, adjust blending mid-playback, or connect to native Roblox track events. If the animation has not been loaded yet for that model, the method returns `nil`.
+
+<Card title="AnimationService:getAnim()" icon="film">
+  `getAnim(model, id)`
+</Card>
+
+## Parameters
+
+<ParamField path="model" type="Model" required>
+  The Roblox `Model` instance whose animation track you want to retrieve. This must be the same reference used in other `AnimationService` calls.
+</ParamField>
+
+<ParamField path="id" type="string" required>
+  The animation ID key whose track you want to access. This must match a key registered with `AnimationService`. The track is typically created the first time the animation is played on the model.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="AnimationTrack" type="AnimationTrack?">
+  The loaded `AnimationTrack` for the given animation ID on the model, or `nil` if no track has been created yet (e.g. the animation has never been played on this model).
+</ResponseField>
+
+## Code Example
+
+```lua
+local AnimationService = require(game.ReplicatedStorage.EZAnimation)
+
+-- Start a run cycle
+AnimationService:play(character, "run_cycle")
+
+-- Retrieve the track to adjust speed dynamically based on move speed
+local track = AnimationService:getAnim(character, "run_cycle")
+
+if track then
+    print("Animation length:", track.Length)
+
+    -- Scale animation speed to match character's walk speed
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        track.Speed = humanoid.WalkSpeed / 16 -- 16 is the default walk speed
+    end
+end
+
+-- Later: adjust blend weight for a smooth transition to a sprint layer
+local sprintTrack = AnimationService:getAnim(character, "sprint_cycle")
+if sprintTrack then
+    sprintTrack:AdjustWeight(0.8, 0.2) -- fade in over 0.2 seconds
+end
+```
+
+<Note>
+  `getAnim` returns `nil` if the animation has not been played at least once on the model. `AnimationService` loads tracks lazily on first play. To ensure a track exists before accessing it, call `play` or pre-load the animation first.
+</Note>
+
+<Tip>
+  You can use the returned `AnimationTrack` to call `:AdjustSpeed()` or `:AdjustWeight()` directly for fine-grained blending control that goes beyond what `AnimationService`'s higher-level methods expose.
+</Tip>
+
+<Warning>
+  After calling `reset` on a model, previously retrieved `AnimationTrack` references may be invalid. Always call `getAnim` again after a reset rather than caching the track reference across a reset boundary.
+</Warning>

@@ -1,0 +1,139 @@
+---
+title: "Queuing Animations in EZAnimation"
+sidebarTitle: "Queue"
+description: "Use EZAnimation's queue() to automatically chain one-shot animations in sequence, playing each one as soon as the previous finishes."
+---
+
+The animation queue lets you line up a series of one-shot animations so they play back-to-back without any manual coordination. When the currently active non-looped animation finishes, EZAnimation automatically picks up the next item in the queue and starts it. This is ideal for combo attacks, emote sequences, or any scenario where ordering matters but you don't want to wire up a chain of callbacks by hand.
+
+## Method Signature
+
+<Card title="AnimationService:queue()" icon="list-ol">
+  `queue(model, id)`
+</Card>
+
+<ParamField path="model" type="Model" required>
+  The character model the animation queue belongs to.
+</ParamField>
+
+<ParamField path="id" type="string" required>
+  A List key to add to the end of the queue. Must match a key in the animation `List` you passed to `init()`.
+</ParamField>
+
+## How the Queue Works
+
+<Steps>
+  <Step title="Play the first animation">
+    Start a non-looped animation normally using `play()`. This becomes the "current" animation that the queue waits on.
+  </Step>
+  <Step title="Queue subsequent animations">
+    Call `queue()` once for each animation you want to play after the current one. They are added in the order you call them.
+  </Step>
+  <Step title="EZAnimation handles the rest">
+    When the current animation stops, EZAnimation automatically dequeues the next key and plays it. This repeats until the queue is empty.
+  </Step>
+</Steps>
+
+## Example: Combo Attack Sequence
+
+A three-hit combo is a perfect use case for the queue. Each attack plays to completion before the next one begins, giving each strike a clean start and finish.
+
+```lua Three-hit combo
+local EZAnim = require(game.ReplicatedStorage.EZAnim)
+
+local AnimService = EZAnim.init({
+    List = {
+        Attack1 = "rbxassetid://1000000001",
+        Attack2 = "rbxassetid://1000000002",
+        Attack3 = "rbxassetid://1000000003",
+    }
+})
+
+-- Play the first attack immediately
+AnimService:play(character, "Attack1", "Action", false, 0.1)
+
+-- Queue the second and third attacks
+AnimService:queue(character, "Attack2")
+AnimService:queue(character, "Attack3")
+
+-- Attack1 plays → finishes → Attack2 plays → finishes → Attack3 plays
+```
+
+<Note>
+  The `queue()` method is designed for **non-looped** animations. A looped animation will never stop on its own, so it will never trigger the next item in the queue. If a looped animation is playing when the queue has items, those queued animations will not play until the loop is explicitly stopped.
+</Note>
+
+## Combining Queue with onStopped
+
+For cases where you need custom logic between queued animations — like checking a condition, playing a sound, or deciding which animation comes next — combine `queue()` with `onStopped()`.
+
+```lua Conditional queuing
+local AnimService = EZAnim.init({
+    List = {
+        Attack1  = "rbxassetid://1000000001",
+        Attack2  = "rbxassetid://1000000002",
+        Finisher = "rbxassetid://1000000099",
+    }
+})
+
+-- Play the first attack
+AnimService:play(character, "Attack1", "Action", false, 0.1)
+
+-- When Attack1 finishes, decide what to queue next based on game state
+AnimService:onStopped(character, "Attack1", function()
+    if comboCount >= 2 then
+        -- Chain straight into the finisher
+        AnimService:play(character, "Finisher", "Action", false, 0.1)
+    else
+        -- Otherwise queue a standard follow-up
+        AnimService:queue(character, "Attack2")
+    end
+end)
+```
+
+<Tip>
+  `onStopped()` returns a connection object. Disconnect it after it fires if you only need it to trigger once, to avoid accumulating stale listeners.
+</Tip>
+
+## Clearing the Queue
+
+If you need to abort a sequence mid-way — for example, because the player was stunned or the character died — call `reset()`. This stops all animations, clears the queue, and resets the model's state in one step.
+
+```lua Clear queue on interrupt
+-- Player got hit — cancel the combo entirely
+AnimService:reset(character)
+```
+
+<Warning>
+  Calling `reset()` also clears the model's state value. If you only want to empty the queue without affecting state or currently playing animations, stop the current animation with `stop()` instead; the queue will naturally halt since there is nothing to chain from.
+</Warning>
+
+## Priority-Aware Sequencing
+
+Queued animations play with EZAnimation's default settings. If you need fine-grained control over priority for each animation in the sequence, use `onStopped()` with explicit `play()` calls instead:
+
+```lua Priority-aware sequence
+local AnimService = EZAnim.init({
+    List = {
+        Swing   = "rbxassetid://1000000001",
+        Slam    = "rbxassetid://1000000002",
+    }
+})
+
+-- Explicit priority-aware chain
+AnimService:play(character, "Swing", "Action", false, 0.1)
+
+AnimService:onStopped(character, "Swing", function()
+    -- Play the next animation at a higher priority tier
+    AnimService:play(character, "Slam", "Action2", false, 0.1)
+end)
+```
+
+<CardGroup cols={2}>
+  <Card title="Groups" icon="layer-group" href="/guides/groups">
+    Randomly select from a group of animations using defineGroup and playGroup.
+  </Card>
+  <Card title="State" icon="tag" href="/guides/state">
+    Track what your character is doing to prevent conflicting animations.
+  </Card>
+</CardGroup>

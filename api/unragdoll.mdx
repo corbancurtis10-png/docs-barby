@@ -1,0 +1,60 @@
+---
+title: "AnimationService:unragdoll() — Restore From Ragdoll"
+sidebarTitle: "unragdoll"
+description: "Restore a ragdolled Humanoid model by re-enabling Motor6D joints, removing BallSocketConstraints, and transitioning the Humanoid back to GettingUp state."
+---
+
+`AnimationService:unragdoll()` reverses everything that `ragdoll()` applied. It re-enables all `Motor6D` joints, removes the temporary `BallSocketConstraints` and their `Attachment` anchors, restores `PlatformStand` and `AutoRotate` to their normal values, and nudges the `Humanoid` into the `GettingUp` state so the standard get-up animation plays. You only need to call this yourself if you did **not** pass a `duration` to `ragdoll()`.
+
+<Card title="AnimationService:unragdoll()" icon="person-walking">
+  `unragdoll(model) → void`
+</Card>
+
+## Parameters
+
+<ParamField path="model" type="Model" required>
+  The character `Model` to recover. This must be the same model you previously passed to `AnimationService:ragdoll()`. Passing a model that was never ragdolled is a no-op.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="void" type="void">
+  This method does not return a value.
+</ResponseField>
+
+## Example
+
+```lua
+local AnimationService = require(game.ReplicatedStorage.EZAnimation)
+
+-- Ragdoll on explosion, let the player press Space to get up
+game.Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        -- Simulate an explosion knocking the character down
+        task.delay(2, function()
+            AnimationService:ragdoll(character)
+            print("Character knocked down!")
+        end)
+
+        -- Listen for a get-up request from the client
+        game.ReplicatedStorage.GetUpEvent.OnServerEvent:Connect(function(requestingPlayer)
+            if requestingPlayer == player then
+                AnimationService:unragdoll(character)
+                print("Character recovered!")
+            end
+        end)
+    end)
+end)
+```
+
+<Note>
+  After `unragdoll()` the `Humanoid` is placed in the `GettingUp` state. Roblox will automatically play the character's standard get-up animation and then transition back to `Running` or `Idle`.
+</Note>
+
+<Tip>
+  If you used the `duration` parameter in `ragdoll()`, you do **not** need to call `unragdoll()` manually — EZAnimation handles that for you. Only call `unragdoll()` directly when you want full control over the recovery moment.
+</Tip>
+
+<Warning>
+  Calling `unragdoll()` while the `Humanoid.Health` is `0` (i.e. the character is dead) will restore the joints visually but the `Humanoid` will remain in the `Dead` state. Gate your calls with a health check if this matters for your game logic.
+</Warning>

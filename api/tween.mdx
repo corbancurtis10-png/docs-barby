@@ -1,0 +1,81 @@
+---
+title: "AnimationService:tween() — Tween Any Instance"
+sidebarTitle: "tween"
+description: "Animate Roblox instance properties to target values using TweenService under the hood. Pass a TweenInfo and a goal table to drive any tweenable property."
+---
+
+`AnimationService:tween()` gives you a one-liner wrapper around the standard `TweenService:Create():Play()` pattern. Instead of constructing and playing a tween manually, you hand EZAnimation the instance, a `TweenInfo`, and a table of target property values — and it returns the live `Tween` object so you can chain callbacks or cancel it at any time.
+
+<Card title="AnimationService:tween()" icon="wand-magic-sparkles">
+  `tween(instance, info, goal) → Tween`
+</Card>
+
+## Parameters
+
+<ParamField path="instance" type="Instance" required>
+  The Roblox `Instance` whose properties you want to animate. Any instance whose properties are tweenable by `TweenService` is valid — for example a `BasePart`, `Model`, `GuiObject`, or `Light`.
+</ParamField>
+
+<ParamField path="info" type="TweenInfo" required>
+  Controls the playback behaviour of the tween. Construct this with `TweenInfo.new()`. A typical call looks like:
+
+  ```lua
+  TweenInfo.new(
+      0.5,                         -- duration (seconds)
+      Enum.EasingStyle.Quad,       -- easing style
+      Enum.EasingDirection.Out,    -- easing direction
+      0,                           -- repeat count (0 = play once)
+      false,                       -- reverse on complete
+      0                            -- delay before start
+  )
+  ```
+</ParamField>
+
+<ParamField path="goal" type="table" required>
+  A dictionary mapping **property names** (as strings) to their **target values**. Every key must be a tweenable property on `instance`. For example:
+
+  ```lua
+  { Transparency = 0.5, Size = Vector3.new(4, 4, 4) }
+  ```
+</ParamField>
+
+## Return Value
+
+<ResponseField name="Tween" type="Tween">
+  The `Tween` instance created and already playing. You can connect to `Tween.Completed` to run logic after the animation finishes, or call `Tween:Cancel()` / `Tween:Pause()` to interrupt it.
+</ResponseField>
+
+## Example
+
+```lua
+local AnimationService = require(game.ReplicatedStorage.EZAnimation)
+
+local part = workspace.SpinningPart
+
+-- Rotate and resize a part over 0.8 seconds
+local t = AnimationService:tween(
+    part,
+    TweenInfo.new(0.8, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out),
+    {
+        CFrame    = part.CFrame * CFrame.Angles(0, math.pi, 0),
+        Size      = Vector3.new(6, 6, 6),
+        Color     = Color3.fromRGB(239, 112, 37),
+    }
+)
+
+t.Completed:Connect(function(playbackState)
+    print("Tween finished with state:", playbackState)
+end)
+```
+
+<Tip>
+  Hold onto the returned `Tween` object if you need to cancel mid-flight. Calling `AnimationService:destroy()` on the model will also clean up any tracked tweens associated with it.
+</Tip>
+
+<Note>
+  `TweenService` cannot tween all property types. Unsupported types (such as `string` or `Enum` values) will be silently ignored by Roblox. Check the [TweenService documentation](https://create.roblox.com/docs/reference/engine/classes/TweenService) for the full list of tweenable types.
+</Note>
+
+<Warning>
+  Tweening a property that is being driven by a `RunService` loop or a physics constraint at the same time will cause jitter. Make sure only one system owns a property at any given moment.
+</Warning>

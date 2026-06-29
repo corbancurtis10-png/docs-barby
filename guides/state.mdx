@@ -1,0 +1,203 @@
+---
+title: "Managing Animation State with EZAnimation"
+sidebarTitle: "State"
+description: "Use setState(), getState(), and reset() to track what a character is doing and prevent conflicting animations from playing simultaneously."
+---
+
+EZAnimation lets you attach an arbitrary state value to any model and read it back whenever you need it. The state system is intentionally lightweight — EZAnimation stores the value you give it and makes it available via `getState()`, but it never acts on it automatically. That means you are in full control of how state is interpreted, checked, and cleared. The most common use is guarding `play()` calls so conflicting animations cannot start while a higher-priority action is already in progress.
+
+## Method Signatures
+
+<CardGroup cols={3}>
+  <Card title="setState()" icon="tag">
+    `setState(model, state)`
+  </Card>
+  <Card title="getState()" icon="magnifying-glass">
+    `getState(model) → any`
+  </Card>
+  <Card title="reset()" icon="arrow-rotate-left">
+    `reset(model)`
+  </Card>
+</CardGroup>
+
+<ParamField path="model" type="Model" required>
+  The character model whose state you want to set or read.
+</ParamField>
+
+<ParamField path="state" type="any" required>
+  Any value you want to associate with the model — typically a string like `"Running"` or `"Attacking"`, but numbers, booleans, or tables also work.
+</ParamField>
+
+## Basic Example: Tracking Locomotion State
+
+The pattern below sets state when a run animation starts and clears it when the animation stops, so other systems can check at any time whether the character is running.
+
+```lua Tracking locomotion state
+local EZAnim = require(game.ReplicatedStorage.EZAnim)
+
+local AnimService = EZAnim.init({
+    List = {
+        Idle = "rbxassetid://1234567890",
+        Run  = "rbxassetid://0987654321",
+    }
+})
+
+-- When the player starts running
+local function onRunStart()
+    AnimService:setState(character, "Running")
+    AnimService:play(character, "Run", "Movement", true, 0.2)
+end
+
+-- When the player stops running
+local function onRunStop()
+    AnimService:crossFade(character, "Run", "Idle", 0.2)
+    AnimService:setState(character, "Idle")
+end
+```
+
+## Checking State Before Playing
+
+Use `getState()` to read the current state before starting a new animation. This prevents lower-priority or conflicting animations from interrupting something important.
+
+```lua Guard play with state check
+local AnimService = EZAnim.init({
+    List = {
+        Idle    = "rbxassetid://1234567890",
+        Attack  = "rbxassetid://1122334455",
+    }
+})
+
+local function tryAttack()
+    local currentState = AnimService:getState(character)
+
+    -- Block attacks while the character is already attacking or stunned
+    if currentState == "Attacking" or currentState == "Stunned" then
+        return
+    end
+
+    AnimService:setState(character, "Attacking")
+    AnimService:play(character, "Attack", "Action", false, 0.1)
+
+    -- Clear the attacking state when the animation finishes
+    AnimService:onStopped(character, "Attack", function()
+        if AnimService:getState(character) == "Attacking" then
+            AnimService:setState(character, "Idle")
+        end
+    end)
+end
+```
+
+<Note>
+  `getState()` returns `nil` if no state has been set for the model yet, or after `reset()` is called. Always check for `nil` before comparing state values.
+</Note>
+
+## State Values Are Flexible
+
+State is not limited to strings. You can store any Lua value — use whatever representation fits your game's logic.
+
+<Tabs>
+  <Tab title="String States">
+    ```lua
+    -- Simple named states work well for most games
+    AnimService:setState(character, "Idle")
+    AnimService:setState(character, "Running")
+    AnimService:setState(character, "Attacking")
+    AnimService:setState(character, "Dead")
+
+    local state = AnimService:getState(character)
+    if state == "Dead" then
+        -- Don't play any more animations
+        return
+    end
+    ```
+  </Tab>
+  <Tab title="Numeric Priority States">
+    ```lua
+    -- Numbers let you use comparison operators
+    -- 0 = Idle, 1 = Moving, 2 = Attacking, 3 = Stunned
+    AnimService:setState(character, 2)
+
+    local state = AnimService:getState(character)
+    if state and state >= 2 then
+        print("Character is busy — action blocked")
+    end
+    ```
+  </Tab>
+  <Tab title="Table States">
+    ```lua
+    -- Tables let you store multiple pieces of information together
+    AnimService:setState(character, {
+        action     = "Attacking",
+        comboCount = 1,
+        startTime  = tick(),
+    })
+
+    local state = AnimService:getState(character)
+    if state and state.action == "Attacking" then
+        print("Combo count:", state.comboCount)
+    end
+    ```
+  </Tab>
+</Tabs>
+
+## Resetting Everything
+
+`reset()` is a full-cleanup call: it stops all animations, clears the state value, and empties the animation queue in one step. Use it when a character respawns, dies, or teleports — any event that should completely wipe the animation slate.
+
+```lua Reset on death
+-- Character died — stop everything and reset
+character.Humanoid.Died:Connect(function()
+    AnimService:reset(character)
+end)
+```
+
+<Warning>
+  `reset()` clears both state **and** the queue. If you only want to clear the state without stopping animations or emptying the queue, call `setState(character, nil)` directly.
+</Warning>
+
+## Practical Pattern: State Machine Wrapper
+
+For larger projects, wrapping EZAnimation's state calls in a simple state machine keeps your animation logic clean and centralised.
+
+```lua State machine wrapper
+local EZAnim = require(game.ReplicatedStorage.EZAnim)
+
+local AnimService = EZAnim.init({
+    List = {
+        Idle   = "rbxassetid://1234567890",
+        Run    = "rbxassetid://0987654321",
+        Attack = "rbxassetid://1122334455",
+    }
+})
+
+local States = {
+    IDLE      = "Idle",
+    RUNNING   = "Running",
+    ATTACKING = "Attacking",
+    STUNNED   = "Stunned",
+    DEAD      = "Dead",
+}
+
+local function transition(model, newState, animKey, animType, looped, fadeTime)
+    local current = AnimService:getState(model)
+
+    -- Prevent any transitions out of the dead state
+    if current == States.DEAD then return end
+
+    AnimService:setState(model, newState)
+    AnimService:play(model, animKey, animType, looped, fadeTime)
+end
+
+-- Usage
+transition(character, States.RUNNING,   "Run",    "Movement", true,  0.2)
+transition(character, States.ATTACKING, "Attack", "Action",   false, 0.1)
+```
+
+<CardGroup cols={2}>
+  <Card title="Queue" icon="list" href="/guides/queue">
+    Chain one-shot animations back-to-back with the built-in animation queue.
+  </Card>
+  <Card title="Ragdoll" icon="person-falling" href="/guides/ragdoll">
+    Enable physics-based ragdoll when a character is knocked out or dies.
+  </Card>
+</CardGroup>

@@ -1,0 +1,165 @@
+---
+title: "Animation Groups in EZAnimation"
+sidebarTitle: "Groups"
+description: "Define named groups of animation List keys and let EZAnimation pick one at random with playGroup(), perfect for varied reactions and idle behaviours."
+---
+
+Animation groups let you register a named collection of animation List keys and then play a random one from that collection with a single call. This adds natural variety to your game — instead of the same hit-reaction animation playing every time a character takes damage, EZAnimation can pick from `Hit1`, `Hit2`, and `Hit3` at random. Groups are defined once and can be reused across as many models as you need.
+
+## Method Signatures
+
+<CardGroup cols={2}>
+  <Card title="AnimationService:defineGroup()" icon="layer-group">
+    `defineGroup(name, list)`
+  </Card>
+  <Card title="AnimationService:playGroup()" icon="dice">
+    `playGroup(model, groupName) → AnimationTrack`
+  </Card>
+</CardGroup>
+
+<ParamField path="name" type="string" required>
+  A unique name for the group. You use this name when calling `playGroup()`.
+</ParamField>
+
+<ParamField path="list" type="table" required>
+  An array of **List keys** from your animation `List` to include in the group. These must exactly match keys you passed to `init()`.
+</ParamField>
+
+---
+
+<ParamField path="model" type="Model" required>
+  The character model to play the randomly selected animation on.
+</ParamField>
+
+<ParamField path="groupName" type="string" required>
+  The name of a previously defined group.
+</ParamField>
+
+## Defining and Playing a Group
+
+<Steps>
+  <Step title="Add your animations to the List">
+    Include all animations you want in the group in the `List` you pass to `init()`.
+
+    ```lua Setup
+    local EZAnim = require(game.ReplicatedStorage.EZAnim)
+
+    local AnimService = EZAnim.init({
+        List = {
+            Hit1 = "rbxassetid://1000000001",
+            Hit2 = "rbxassetid://1000000002",
+            Hit3 = "rbxassetid://1000000003",
+        }
+    })
+    ```
+  </Step>
+  <Step title="Define the group using List keys">
+    Call `defineGroup()` with a name and an array of List keys. Do this once — typically at setup time.
+
+    ```lua Define group
+    -- Group members are List keys, not raw rbxassetid strings
+    AnimService:defineGroup("Hit", { "Hit1", "Hit2", "Hit3" })
+    ```
+  </Step>
+  <Step title="Play a random animation from the group">
+    Call `playGroup()` with the model and group name. EZAnimation picks one key at random and plays it.
+
+    ```lua Play group
+    -- Each call may play a different animation from the "Hit" group
+    AnimService:playGroup(character, "Hit")
+    ```
+  </Step>
+</Steps>
+
+## Full Example: Hit Reactions
+
+Here is a complete example wiring a hit group to a damage event so the character plays a varied reaction every time they are struck.
+
+```lua Hit reactions with groups
+local EZAnim = require(game.ReplicatedStorage.EZAnim)
+
+local AnimService = EZAnim.init({
+    List = {
+        Hit1 = "rbxassetid://2000000001",
+        Hit2 = "rbxassetid://2000000002",
+        Hit3 = "rbxassetid://2000000003",
+    }
+})
+
+-- Register the hit group
+AnimService:defineGroup("Hit", { "Hit1", "Hit2", "Hit3" })
+
+-- Connect the group to your damage system
+character:WaitForChild("Humanoid").HealthChanged:Connect(function(newHealth)
+    local delta = character.Humanoid.MaxHealth - newHealth
+    if delta > 0 then
+        -- A random hit animation plays each time damage is taken
+        AnimService:playGroup(character, "Hit")
+    end
+end)
+```
+
+## More Use Cases
+
+Groups are not limited to hit reactions. Any situation where you want natural variation benefits from this pattern.
+
+<CardGroup cols={2}>
+  <Card title="Idle Variations" icon="person">
+    Define an `"IdleVariant"` group with several subtle idle animations so your NPCs never look frozen.
+
+    ```lua
+    local AnimService = EZAnim.init({
+        List = {
+            IdleLookLeft = "rbxassetid://3000000001",
+            IdleStretch  = "rbxassetid://3000000002",
+            IdleTapFoot  = "rbxassetid://3000000003",
+        }
+    })
+
+    AnimService:defineGroup("IdleVariant", {
+        "IdleLookLeft",
+        "IdleStretch",
+        "IdleTapFoot",
+    })
+
+    -- Call periodically to pick a random idle variant
+    task.delay(5, function()
+        AnimService:playGroup(npc, "IdleVariant")
+    end)
+    ```
+  </Card>
+  <Card title="Footstep Surfaces" icon="shoe-prints">
+    Define separate groups per surface type and play the matching group when a step lands.
+
+    ```lua
+    local AnimService = EZAnim.init({
+        List = {
+            StepGrass1 = "rbxassetid://4000000001",
+            StepGrass2 = "rbxassetid://4000000002",
+            StepWood1  = "rbxassetid://4000000003",
+            StepWood2  = "rbxassetid://4000000004",
+        }
+    })
+
+    AnimService:defineGroup("StepGrass", { "StepGrass1", "StepGrass2" })
+    AnimService:defineGroup("StepWood",  { "StepWood1",  "StepWood2"  })
+    ```
+  </Card>
+</CardGroup>
+
+<Tip>
+  You can define groups at any point before you call `playGroup()`. A good pattern is to define all groups in a central `AnimationConfig` module that you require at game start.
+</Tip>
+
+<Note>
+  `playGroup()` uses the same underlying `play()` call internally, so the returned animation track inherits all standard behaviour — it can be stopped, queued after, and connected to events just like any other track.
+</Note>
+
+<CardGroup cols={2}>
+  <Card title="Queue" icon="list" href="/guides/queue">
+    Chain one-shot animations sequentially using the built-in queue.
+  </Card>
+  <Card title="State" icon="tag" href="/guides/state">
+    Use setState to track what a character is doing and avoid animation conflicts.
+  </Card>
+</CardGroup>
